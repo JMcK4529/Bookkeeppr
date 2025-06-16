@@ -2,6 +2,10 @@ import os
 import platform
 from pathlib import Path
 import sqlite3
+from customer import Customer, CustomerRepository
+from purchase import Purchase, PurchaseRepository
+from sale import Sale, SaleRepository
+from supplier import Supplier, SupplierRepository
 
 
 def get_db_path() -> Path:
