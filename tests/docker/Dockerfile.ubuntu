@@ -1,0 +1,24 @@
+# Dockerfile.ubuntu2404
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    python3.12 \
+    python3.12-venv \
+    curl \
+    git \
+    build-essential
+
+RUN ln -s /usr/bin/python3.12 /usr/bin/python3
+
+RUN python3.12 -m venv /opt/venv && \
+    /opt/venv/bin/pip install --upgrade pip
+
+RUN /opt/venv/bin/pip install pipenv
+
+ENV PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /opt/bookkeeppr
+
+CMD [ "bash" ]
