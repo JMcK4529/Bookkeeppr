@@ -24,7 +24,7 @@ def database_exists() -> bool:
     return exists
 
 
-def init_db():
+def init_db() -> None:
     db_path = get_db_path()
     if db_path.exists():
         print(f"[DB] Database already exists at {db_path}")
