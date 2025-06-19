@@ -1,0 +1,34 @@
+[
+    {
+        "db_path": "/home/my_user/.bookkeeppr.db",
+        "exists": True
+    },
+    {
+        "db_path": "/home/my_user/.bookkeeppr.db",
+        "exists": False
+    },
+    {
+        "db_path": "/Users/my_user/.bookkeeppr.db",
+        "exists": True
+    },
+    {
+        "db_path": "/Users/my_user/.bookkeeppr.db",
+        "exists": False
+    },
+    {
+        "db_path": "C:/Users/my_user/AppData/Local/Bookkeeppr/bookkeeppr.db",
+        "exists": True
+    },
+    {
+        "db_path": "C:/Users/my_user/AppData/Local/Bookkeeppr/bookkeeppr.db",
+        "exists": False
+    },
+    {
+        "db_path": "C:/Users/my_user/AppData/Roaming/Bookkeeppr/bookkeeppr.db",
+        "exists": True
+    },
+    {
+        "db_path": "C:/Users/my_user/AppData/Roaming/Bookkeeppr/bookkeeppr.db",
+        "exists": False
+    },
+]

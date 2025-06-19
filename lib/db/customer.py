@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 from typing import Optional
-from utils import get_db_path
+from lib.db.utils import get_db_path
 
 
 class Customer:
@@ -10,9 +10,11 @@ class Customer:
         self.name = name
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Customer):
-            return False
-        return self.id == other.id and self.name == other.name
+        return (
+            isinstance(other, Customer)
+            and self.id == other.id
+            and self.name == other.name
+        )
 
     def __repr__(self):
         return f"Customer(id={self.id}, name='{self.name}')"

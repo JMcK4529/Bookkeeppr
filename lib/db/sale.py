@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 from typing import Optional
-from utils import get_db_path
+from lib.db.utils import get_db_path
 
 
 class Sale:

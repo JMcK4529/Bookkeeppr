@@ -1,11 +1,11 @@
+import logging
 import os
 import platform
 from pathlib import Path
 import sqlite3
-from customer import Customer, CustomerRepository
-from purchase import Purchase, PurchaseRepository
-from sale import Sale, SaleRepository
-from supplier import Supplier, SupplierRepository
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def get_db_path() -> Path:
@@ -22,7 +22,7 @@ def database_exists() -> bool:
     """Check if the database file exists at the platform-specific location."""
     db_path = get_db_path()
     exists = db_path.exists()
-    print(
+    logger.info(
         f"[DB] Looking for DB at {db_path}... {'Found' if exists else 'Not found'}"
     )
     return exists
@@ -31,7 +31,7 @@ def database_exists() -> bool:
 def init_db() -> None:
     db_path = get_db_path()
     if db_path.exists():
-        print(f"[DB] Database already exists at {db_path}")
+        logger.info(f"[DB] Database already exists at {db_path}")
         return
 
     # Ensure parent directory exists
@@ -47,4 +47,4 @@ def init_db() -> None:
 
     conn.commit()
     conn.close()
-    print(f"[DB] Initialized new database at {db_path}")
+    logger.info(f"[DB] Initialized new database at {db_path}")
