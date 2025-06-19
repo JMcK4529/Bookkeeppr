@@ -1,0 +1,17 @@
+[
+    {
+        "system": "Windows",
+        "local_app_data": "C:/Users/my_user/AppData/Local",
+    },
+    {
+        "system": "Windows",
+        "app_data": "C:/Users/my_user/AppData/Roaming",
+    },
+    {
+        "system": "Darwin",
+        "home": "/Users/my_user",
+    },
+    {
+        "system": "Linux",
+        "home": "/home/user"},
+]
