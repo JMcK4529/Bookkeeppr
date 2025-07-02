@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Purchases</h1>
+<form method="get" action="/purchases" class="filter-form">
+    <div class="form-row">
+        <label for="invoice">Supplier Invoice Code:</label>
+        <input type="text" name="invoice" id="invoice" value="{{ filters.invoice or '' }}">
+    </div>
+    <div class="form-row">
+        <label for="supplier">Supplier Name:</label>
+        <input type="text" name="supplier" id="supplier" value="{{ filters.supplier or '' }}">
+    </div>
+    <div class="form-row">
+        <label>Net Amount:</label>
+        <input type="number" step="0.01" name="net_min" placeholder="Min" value="{{ filters.net.min or '' }}">
+        <input type="number" step="0.01" name="net_max" placeholder="Max" value="{{ filters.net.max or '' }}">
+        <input type="number" step="0.01" name="net_eq" placeholder="Equal to" value="{{ filters.net.eq or '' }}">
+    </div>
+    <div class="form-row">
+        <label>Goods:</label>
+        <input type="number" step="0.01" name="goods_min" placeholder="Min" value="{{ filters.goods.min or '' }}">
+        <input type="number" step="0.01" name="goods_max" placeholder="Max" value="{{ filters.goods.max or '' }}">
+        <input type="number" step="0.01" name="goods_eq" placeholder="Equal to" value="{{ filters.goods.eq or '' }}">
+    </div>
+    <div class="form-row">
+        <label>Utilities:</label>
+        <input type="number" step="0.01" name="utilities_min" placeholder="Min" value="{{ filters.utilities.min or '' }}">
+        <input type="number" step="0.01" name="utilities_max" placeholder="Max" value="{{ filters.utilities.max or '' }}">
+        <input type="number" step="0.01" name="utilities_eq" placeholder="Equal to" value="{{ filters.utilities.eq or '' }}">
+    </div>
+    <div class="form-row">
+        <label>Motor Expenses:</label>
+        <input type="number" step="0.01" name="motor_expenses_min" placeholder="Min" value="{{ filters.motor_expenses.min or '' }}">
+        <input type="number" step="0.01" name="motor_expenses_max" placeholder="Max" value="{{ filters.motor_expenses.max or '' }}">
+        <input type="number" step="0.01" name="motor_expenses_eq" placeholder="Equal to" value="{{ filters.motor_expenses.eq or '' }}">
+    </div>
+    <div class="form-row">
+        <label>Sundries:</label>
+        <input type="number" step="0.01" name="sundries_min" placeholder="Min" value="{{ filters.sundries.min or '' }}">
+        <input type="number" step="0.01" name="sundries_max" placeholder="Max" value="{{ filters.sundries.max or '' }}">
+        <input type="number" step="0.01" name="sundries_eq" placeholder="Equal to" value="{{ filters.sundries.eq or '' }}">
+    </div>
+    <div class="form-row">
+        <label>Miscellaneous:</label>
+        <input type="number" step="0.01" name="miscellaneous_min" placeholder="Min" value="{{ filters.miscellaneous.min or '' }}">
+        <input type="number" step="0.01" name="miscellaneous_max" placeholder="Max" value="{{ filters.miscellaneous.max or '' }}">
+        <input type="number" step="0.01" name="miscellaneous_eq" placeholder="Equal to" value="{{ filters.miscellaneous.eq or '' }}">
+    </div>
+    <div class="form-row">
+        <label>VAT Percent:</label>
+        {% for vat in vat_options %}
+            <label><input type="checkbox" name="vat" value="{{ vat }}" {% if vat in filters.vat %}checked{% endif %}> {{ 100*vat }}%</label>
+        {% endfor %}
+    </div>
+    <div class="form-row">
+        <label>Payment Method:</label>
+        {% for method in payment_options %}
+            <label><input type="checkbox" name="payment" value="{{ method }}" {% if method in filters.payment %}checked{% endif %}> {{ method }}</label>
+        {% endfor %}
+    </div>
+    <div class="form-row">
+        <label>Date/Time From:</label>
+        <input type="datetime-local" name="timeFrom" value="{{ filters.timeFrom or '' }}">
+        <label>To:</label>
+        <input type="datetime-local" name="timeTo" value="{{ filters.timeTo or '' }}">
+    </div>
+    <div class="form-row">
+        <button type="submit">Apply Filters</button>
+        <a href="/purchases/create" class="create-button">+</a>
+    </div>
+</form>
+
+<table>
+    <thead>
+        <tr>
+            <th>Invoice Number</th>
+            <th>Supplier Name</th>
+            <th>Net (£)</th>
+            <th>VAT %</th>
+            <th>Goods</th>
+            <th>Utilities</th>
+            <th>Motor</th>
+            <th>Sundries</th>
+            <th>Misc.</th>
+            <th>Payment</th>
+            <th>Capital Spend?</th>
+            <th>Timestamp</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for purchase in purchases %}
+            <tr>
+                <td>{{ purchase.supplier_invoice_code }}</td>
+                <td>{{ purchase.supplier_name }}</td>
+                <td>{{ "%.2f"|format(purchase.net_amount) }}</td>
+                <td>{{ 100*purchase.vat_percent }}%</td>
+                <td>{{ "%.2f"|format(purchase.goods) }}</td>
+                <td>{{ "%.2f"|format(purchase.utilities) }}</td>
+                <td>{{ "%.2f"|format(purchase.motor_expenses) }}</td>
+                <td>{{ "%.2f"|format(purchase.sundries) }}</td>
+                <td>{{ "%.2f"|format(purchase.miscellaneous) }}</td>
+                <td>{{ purchase.payment_method }}</td>
+                <td>{{ "Yes" if purchase.capital_spend else "No" }}</td>
+                <td>{{ purchase.timestamp }}</td>
+            </tr>
+        {% else %}
+            <tr>
+                <td colspan="11">No purchases found.</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

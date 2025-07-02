@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Suppliers - Bookkeeppr{% endblock %}
+
+{% block content %}
+<h1>Supplier Details</h1>
+
+<div id="details">
+    <!-- Supplier details and icon-link(s) to change -->
+    {% if supplier_obj %}
+        <table>
+            <thead>
+                <tr><th colspan="2">Supplier Name</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ supplier_obj.name }}</td>
+                    <td><a>[cog icon]</a></td>
+                </tr>
+            </tbody>
+        </table>
+    {% else %}
+        <p>The supplier could not be found.</p>
+    {% endif %}
+</div>
+
+{% endblock %}

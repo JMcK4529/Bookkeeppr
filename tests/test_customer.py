@@ -127,3 +127,54 @@ class TestCustomerRepository(TestCase):
             result = self.repo.delete(999)
             self.assertIsNone(result)
             self.mock_cursor.execute.assert_not_called()
+
+    def test_search_when_exists(self):
+        self.mock_cursor.fetchall.return_value = [
+            (1, "OneTwoThree"),
+            (2, "onetwothree"),
+            (3, "twothreefour"),
+        ]
+        result = self.repo.search(name_query="two")
+        self.mock_cursor.execute.assert_called_once_with(
+            "SELECT id, name FROM customers WHERE LOWER(name) LIKE ?",
+            ("%two%",),
+        )
+        self.assertEqual(
+            result,
+            [
+                Customer(1, "OneTwoThree"),
+                Customer(2, "onetwothree"),
+                Customer(3, "twothreefour"),
+            ],
+        )
+
+    def test_search_when_not_exists(self):
+        self.mock_cursor.fetchall.return_value = []
+        result = self.repo.search(name_query="one")
+        self.mock_cursor.execute.assert_called_once_with(
+            "SELECT id, name FROM customers WHERE LOWER(name) LIKE ?",
+            ("%one%",),
+        )
+        self.assertEqual(
+            result,
+            [],
+        )
+
+    def test_all(self):
+        self.mock_cursor.fetchall.return_value = [
+            (1, "OneTwoThree"),
+            (2, "onetwothree"),
+            (3, "twothreefour"),
+        ]
+        result = self.repo.all()
+        self.mock_cursor.execute.assert_called_once_with(
+            "SELECT id, name FROM customers"
+        )
+        self.assertEqual(
+            result,
+            [
+                Customer(1, "OneTwoThree"),
+                Customer(2, "onetwothree"),
+                Customer(3, "twothreefour"),
+            ],
+        )

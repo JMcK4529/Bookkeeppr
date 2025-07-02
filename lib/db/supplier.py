@@ -1,7 +1,11 @@
+import logging
 import sqlite3
 from pathlib import Path
 from typing import Optional
 from lib.db.utils import get_db_path
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class Supplier:
@@ -81,3 +85,22 @@ class SupplierRepository:
             cursor.execute("DELETE FROM suppliers WHERE id = ?", (id,))
             conn.commit()
             return supplier
+
+    def search(self, name_query: str) -> list[Supplier]:
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, name FROM suppliers WHERE LOWER(name) LIKE ?",
+                (f"%{name_query.lower()}%",),
+            )
+            rows = cursor.fetchall()
+            return [Supplier(id=row[0], name=row[1]) for row in rows]
+
+    def all(self) -> list[Supplier]:
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, name FROM suppliers",
+            )
+            rows = cursor.fetchall()
+            return [Supplier(id=row[0], name=row[1]) for row in rows]

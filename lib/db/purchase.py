@@ -1,7 +1,12 @@
+import logging
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from lib.db.utils import get_db_path
+from lib.db.utils import get_db_path, normalize_datetime
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class Purchase:
@@ -9,20 +14,31 @@ class Purchase:
         self,
         id: Optional[int],
         supplier_id: int,
+        supplier_name: str,
         supplier_invoice_code: str,
         internal_invoice_number: str,
         net_amount: float,
-        vat_percent: str,
+        vat_percent: float,
         goods: float,
         utilities: float,
         motor_expenses: float,
         sundries: float,
+        miscellaneous: float,
         payment_method: str,
         timestamp: str,
         capital_spend: bool,
     ):
+        # Fail fast if the cost breakdown is incorrect
+        component_sum = sum(
+            [goods, utilities, motor_expenses, sundries, miscellaneous]
+        )
+        if net_amount != round(component_sum, 2):
+            raise ValueError(
+                f"Net amount ({net_amount}) does not equal sum of components ({component_sum})."
+            )
         self.id = id
         self.supplier_id = supplier_id
+        self.supplier_name = supplier_name
         self.supplier_invoice_code = supplier_invoice_code
         self.internal_invoice_number = internal_invoice_number
         self.net_amount = net_amount
@@ -31,15 +47,20 @@ class Purchase:
         self.utilities = utilities
         self.motor_expenses = motor_expenses
         self.sundries = sundries
+        self.miscellaneous = miscellaneous
         self.payment_method = payment_method
         self.timestamp = timestamp
+        if timestamp:
+            self.timestamp = normalize_datetime(timestamp)
+        else:
+            self.timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.capital_spend = capital_spend
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Purchase) and self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return f"Purchase(id={self.id}, internal_invoice_number='{self.internal_invoice_number}')"
+        return f"Purchase(id={self.id}, internal_invoice_number='{self.internal_invoice_number}', supplier_name='{self.supplier_name}')"
 
 
 class PurchaseRepository:
@@ -55,12 +76,13 @@ class PurchaseRepository:
             cursor.execute(
                 """
                 INSERT INTO purchases (
-                    supplier_id, supplier_invoice_code, internal_invoice_number, net_amount,
-                    vat_percent, goods, utilities, motor_expenses, sundries,
+                    supplier_id, supplier_name, supplier_invoice_code, internal_invoice_number, net_amount,
+                    vat_percent, goods, utilities, motor_expenses, sundries, miscellaneous,
                     payment_method, timestamp, capital_spend
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     purchase.supplier_id,
+                    purchase.supplier_name,
                     purchase.supplier_invoice_code,
                     purchase.internal_invoice_number,
                     purchase.net_amount,
@@ -69,6 +91,7 @@ class PurchaseRepository:
                     purchase.utilities,
                     purchase.motor_expenses,
                     purchase.sundries,
+                    purchase.miscellaneous,
                     purchase.payment_method,
                     purchase.timestamp,
                     int(purchase.capital_spend),
@@ -78,6 +101,7 @@ class PurchaseRepository:
             return Purchase(
                 cursor.lastrowid,
                 purchase.supplier_id,
+                purchase.supplier_name,
                 purchase.supplier_invoice_code,
                 purchase.internal_invoice_number,
                 purchase.net_amount,
@@ -86,6 +110,7 @@ class PurchaseRepository:
                 purchase.utilities,
                 purchase.motor_expenses,
                 purchase.sundries,
+                purchase.miscellaneous,
                 purchase.payment_method,
                 purchase.timestamp,
                 purchase.capital_spend,
@@ -96,7 +121,7 @@ class PurchaseRepository:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT id, supplier_id, supplier_invoice_code, internal_invoice_number, net_amount,
+                SELECT id, supplier_id, supplier_name, supplier_invoice_code, internal_invoice_number, net_amount,
                        vat_percent, goods, utilities, motor_expenses, sundries,
                        payment_method, timestamp, capital_spend
                 FROM purchases WHERE id = ?""",
@@ -116,12 +141,13 @@ class PurchaseRepository:
             cursor.execute(
                 """
                 UPDATE purchases SET
-                    supplier_id = ?, supplier_invoice_code = ?, internal_invoice_number = ?, net_amount = ?,
-                    vat_percent = ?, goods = ?, utilities = ?, motor_expenses = ?, sundries = ?,
+                    supplier_id = ?, supplier_name = ?, supplier_invoice_code = ?, internal_invoice_number = ?, net_amount = ?,
+                    vat_percent = ?, goods = ?, utilities = ?, motor_expenses = ?, sundries = ?, miscellaneous = ?,
                     payment_method = ?, timestamp = ?, capital_spend = ?
                 WHERE id = ?""",
                 (
                     purchase.supplier_id,
+                    purchase.supplier_name,
                     purchase.supplier_invoice_code,
                     purchase.internal_invoice_number,
                     purchase.net_amount,
@@ -130,6 +156,7 @@ class PurchaseRepository:
                     purchase.utilities,
                     purchase.motor_expenses,
                     purchase.sundries,
+                    purchase.miscellaneous,
                     purchase.payment_method,
                     purchase.timestamp,
                     int(purchase.capital_spend),
@@ -148,3 +175,111 @@ class PurchaseRepository:
             cursor.execute("DELETE FROM purchases WHERE id = ?", (id,))
             conn.commit()
             return purchase
+
+    def search(self, filters: dict) -> list[Purchase]:
+        query = """
+            SELECT id, supplier_id, supplier_name, supplier_invoice_code, internal_invoice_number, net_amount, vat_percent, goods, utilities, motor_expenses, sundries, miscellaneous, payment_method, timestamp, capital_spend
+            FROM purchases WHERE 1=1
+        """
+        params = []
+        logger.info(f"Query filters: {filters}")
+        # Filter by supplier and/or invoice number
+        substring_filters = {
+            filters.get("supplier"): "supplier",
+            filters.get("supplier_invoice"): "supplier_invoice_code",
+            filters.get("internal_invoice"): "internal_invoice_number",
+        }
+        for substring in substring_filters.keys():
+            if substring:
+                query += f" AND LOWER({substring_filters[substring]})"
+                params.append(f"%{substring.lower()}%")
+
+        # Filter by cost or cost breakdown
+        range_filters = [
+            {"name": "net_amount", "values": filters.get("net", {})},
+            {"name": "goods", "values": filters.get("goods", {})},
+            {"name": "utilities", "values": filters.get("utilities", {})},
+            {
+                "name": "motor_expenses",
+                "values": filters.get("motor_expenses", {}),
+            },
+            {"name": "sundries", "values": filters.get("sundries", {})},
+            {
+                "name": "miscellaneous",
+                "values": filters.get("miscellaneous", {}),
+            },
+        ]
+        logger.info(f"Range filters: {range_filters}")
+        for range in range_filters:
+            if "eq" in range["values"]:
+                query += f" AND {range["name"]} = ?"
+                params.append(range["values"]["eq"])
+                logger.info(
+                    f"Added {query},{range["values"]["eq"]} to query,params."
+                )
+            else:
+                if "min" in range["values"]:
+                    query += f" AND {range["name"]} >= ?"
+                    params.append(range["values"]["min"])
+                    logger.info(
+                        f"Added {query},{range["values"]["min"]} to query,params."
+                    )
+                if "max" in range["values"]:
+                    query += f" AND {range["name"]} <= ?"
+                    params.append(range["values"]["max"])
+                    logger.info(
+                        f"Added {query},{range["values"]["max"]} to query,params."
+                    )
+
+        # Filter by vat_percent
+        vat_filter = filters.get("vat")
+        if vat_filter:
+            placeholders = ",".join("?" for _ in vat_filter)
+            query += f" AND vat_percent IN ({placeholders})"
+            params.extend(vat_filter)
+
+        # Filter by payment_method
+        payment_filter = filters.get("payment")
+        if payment_filter:
+            placeholders = ",".join("?" for _ in payment_filter)
+            query += f" AND payment_method IN ({placeholders})"
+            params.extend(payment_filter)
+
+        # Filter by timestamp
+        timeFrom = normalize_datetime(filters.get("timeFrom"))
+        timeTo = normalize_datetime(filters.get("timeTo"))
+        if timeFrom:
+            query += " AND timestamp >= ?"
+            params.append(timeFrom)
+        if timeTo:
+            query += " AND timestamp <= ?"
+            params.append(timeTo)
+
+        # Filter by capital spend
+        if capital_spend := filters.get("capital_spend"):
+            if capital_spend == "True":
+                capital_spend = True
+            if capital_spend == "False":
+                capital_spend = False
+            query += " AND capital_spend >= ?"
+            params.append(int(capital_spend))
+
+        logger.info(f"query={query},params={params}")
+
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            return [Purchase(*row) for row in rows]
+
+    def all(self) -> list[Purchase]:
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT id, supplier_id, supplier_name, supplier_invoice_code, internal_invoice_number, net_amount, vat_percent, goods, utilities, motor_expenses, sundries, miscellaneous, payment_method, timestamp, capital_spend 
+                FROM purchases
+            """,
+            )
+            rows = cursor.fetchall()
+            return [Purchase(*row) for row in rows]

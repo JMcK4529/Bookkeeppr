@@ -9,11 +9,12 @@
 
 ## Features
 ### Frontend
-- HTML & CSS for index page of app
+- [X] HTML for index page
+- [/] CSS stylesheet
 ### API
-- Add POST routes for creating:
-    - Customers
-    - Suppliers
-    - Invoices:
-        - Purchases
-        - Sales
+- [X] Add POST routes for creating:
+    - [X] Customers
+    - [X] Suppliers
+    - [X] Invoices:
+        - [X] Purchases
+        - [X] Sales

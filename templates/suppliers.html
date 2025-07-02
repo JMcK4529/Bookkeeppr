@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Suppliers - Bookkeeppr{% endblock %}
+
+{% block content %}
+<h1>Suppliers</h1>
+
+<form method="get" action="{{ url_for('suppliers') }}">
+    <input type="text" name="q" placeholder="Search suppliers..." value="{{ query }}">
+    <button type="submit">Search</button>
+    <button type="button" class="create-button" onclick="openForm()">+</button>
+</form>
+
+<div id="results">
+    <!-- Placeholder: Paginated supplier list goes here -->
+    {% if suppliers %}
+        <table>
+            <thead>
+                <tr><th>Supplier Name</th></tr>
+            </thead>
+            <tbody>
+                {% for supplier in suppliers %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('single_suppliers', suppliers_id=supplier.id) }}">
+                                {{ supplier.name }}
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% elif query %}
+        <p>No results found for "{{ query }}".</p>
+    {% else %}
+        <p>No results.</p>
+    {% endif %}
+</div>
+
+<!-- Hidden form modal or inline for new supplier -->
+<div id="new-supplier-form" style="display:none; margin-top: 1rem;">
+    <form method="post" action="/suppliers/create">
+        <input type="text" name="name" placeholder="Supplier Name" required>
+        <button type="submit">Add Supplier</button>
+    </form>
+</div>
+
+<script>
+function openForm() {
+    document.getElementById("new-supplier-form").style.display = "block";
+}
+</script>
+{% endblock %}

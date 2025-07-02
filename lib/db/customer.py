@@ -81,3 +81,22 @@ class CustomerRepository:
             cursor.execute("DELETE FROM customers WHERE id = ?", (id,))
             conn.commit()
             return customer
+
+    def search(self, name_query: str) -> list[Customer]:
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, name FROM customers WHERE LOWER(name) LIKE ?",
+                (f"%{name_query.lower()}%",),
+            )
+            rows = cursor.fetchall()
+            return [Customer(id=row[0], name=row[1]) for row in rows]
+
+    def all(self) -> list[Customer]:
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, name FROM customers",
+            )
+            rows = cursor.fetchall()
+            return [Customer(id=row[0], name=row[1]) for row in rows]

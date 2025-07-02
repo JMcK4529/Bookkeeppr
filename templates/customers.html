@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Customers - Bookkeeppr{% endblock %}
+
+{% block content %}
+<h1>Customers</h1>
+
+<form method="get" action="{{ url_for('customers') }}">
+    <input type="text" name="q" placeholder="Search customers..." value="{{ query }}">
+    <button type="submit">Search</button>
+    <button type="button" class="create-button" onclick="openForm()">+</button>
+</form>
+
+<div id="results">
+    <!-- Placeholder: Paginated customer list goes here -->
+    {% if customers %}
+        <table>
+            <thead>
+                <tr><th>Customer Name</th></tr>
+            </thead>
+            <tbody>
+                {% for customer in customers %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('single_customers', customers_id=customer.id) }}">
+                                {{ customer.name }}
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% elif query %}
+        <p>No results found for "{{ query }}".</p>
+    {% else %}
+        <p>No results.</p>
+    {% endif %}
+</div>
+
+<!-- Hidden form modal or inline for new customer -->
+<div id="new-customer-form" style="display:none; margin-top: 1rem;">
+    <form method="post" action="/customers/create">
+        <input type="text" name="name" placeholder="Customer Name" required>
+        <button type="submit">Add Customer</button>
+    </form>
+</div>
+
+<script>
+function openForm() {
+    document.getElementById("new-customer-form").style.display = "block";
+}
+</script>
+{% endblock %}

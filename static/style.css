@@ -1,0 +1,35 @@
+body {
+    font-family: sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+}
+
+.create-button {
+    display: inline-block;
+    background-color: #4CAF50;
+    color: white;
+}
+
+.navbar {
+    background-color: #004080;
+    padding: 1rem;
+}
+.navbar a {
+    color: white;
+    text-decoration: none;
+    margin-right: 1rem;
+    font-weight: bold;
+}
+.content {
+    padding: 2rem;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+th, td {
+    padding: 0.5rem;
+    text-align: left;
+}

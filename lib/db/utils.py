@@ -1,6 +1,7 @@
 import logging
 import os
 import platform
+from datetime import datetime
 from pathlib import Path
 import sqlite3
 
@@ -48,3 +49,29 @@ def init_db() -> None:
     conn.commit()
     conn.close()
     logger.info(f"[DB] Initialized new database at {db_path}")
+
+
+def normalize_datetime(dt_str, output_format="%Y-%m-%d %H:%M:%S"):
+    """Try to parse a datetime string using multiple possible formats.
+
+    Returns a string formatted to `output_format` or None if no match found.
+    """
+    if not dt_str:
+        return None
+
+    formats = [
+        "%Y-%m-%dT%H:%M",  # HTML datetime-local input
+        "%Y-%m-%d %H:%M",  # space-separated
+        "%Y-%m-%dT%H:%M:%S",  # T-separated with seconds
+        "%Y-%m-%d %H:%M:%S",  # space-separated with seconds
+        "%Y-%m-%d",  # just the date
+    ]
+
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(dt_str, fmt)
+            return dt.strftime(output_format)
+        except ValueError:
+            continue
+
+    return None

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Customers - Bookkeeppr{% endblock %}
+
+{% block content %}
+<h1>Customer Details</h1>
+
+<div id="details">
+    <!-- Customer details and icon-link(s) to change -->
+    {% if customer_obj %}
+        <table>
+            <thead>
+                <tr><th colspan="2">Customer Name</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ customer_obj.name }}</td>
+                    <td><a>[cog icon]</a></td>
+                </tr>
+            </tbody>
+        </table>
+    {% else %}
+        <p>The customer could not be found.</p>
+    {% endif %}
+</div>
+
+{% endblock %}
