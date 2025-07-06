@@ -73,6 +73,10 @@ class SupplierRepository:
             cursor.execute(
                 "UPDATE suppliers SET name = ? WHERE id = ?", (name, id)
             )
+            cursor.execute(
+                "UPDATE purchases SET supplier_name = ? WHERE supplier_id = ?",
+                (name, id),
+            )
             conn.commit()
             return self.read(id=id)
 

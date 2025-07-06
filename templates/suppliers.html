@@ -22,7 +22,7 @@
                 {% for supplier in suppliers %}
                     <tr>
                         <td>
-                            <a href="{{ url_for('single_suppliers', suppliers_id=supplier.id) }}">
+                            <a href="{{ url_for('single_supplier', supplier_id=supplier.id) }}">
                                 {{ supplier.name }}
                             </a>
                         </td>

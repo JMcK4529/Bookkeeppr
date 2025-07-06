@@ -1,5 +1,12 @@
 import logging
-from flask import flash, redirect, render_template, url_for, request
+from flask import (
+    flash,
+    make_response,
+    redirect,
+    render_template,
+    url_for,
+    request,
+)
 from sqlite3 import IntegrityError
 
 logging.basicConfig(level=logging.INFO)
@@ -8,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def create_single_entity_view(entity_name, repo_class):
     def view(**kwargs):
-        entity_id = kwargs[f"{entity_name}_id"]
+        entity_id = kwargs[f"{entity_name[:-1]}_id"]
         repo = repo_class()
         match request.method:
             case "GET":
@@ -29,7 +36,24 @@ def create_single_entity_view(entity_name, repo_class):
             case "POST":
                 pass
             case "PATCH":
-                pass
+                name = request.form.get("name", "").strip()
+                try:
+                    repo.update(id=entity_id, name=name)
+                    flash(
+                        f"{entity_name[:-1].capitalize()} updated successfully",
+                        "success",
+                    )
+                    response = make_response("OK", 204)
+                except IntegrityError as err:
+                    if "UNIQUE constraint failed" in str(err):
+                        err_msg = f"{name} already exists"
+                    else:
+                        err_msg = f"Unexpected Error: {str(err)}"
+                    logger.warning(err_msg)
+                    flash(err_msg, "error")
+                    response = make_response(f"Update failed. {err_msg}", 409)
+                response.headers["Content-Type"] = "text/plain; charset=utf-8"
+                return response
             case "DELETE":
                 pass
 
@@ -39,11 +63,11 @@ def create_single_entity_view(entity_name, repo_class):
 def register_entity_routes(entity_name, template_name, repo_class, app):
     list_endpoint = f"/{entity_name}"
     create_endpoint = f"/{entity_name}/create"
-    by_id_endpoint = f"/{entity_name}/<int:{entity_name}_id>"
+    by_id_endpoint = f"/{entity_name}/<int:{entity_name[:-1]}_id>"
 
     list_endpoint_name = f"{entity_name}"
     create_endpoint_name = f"create_{entity_name}"
-    by_id_endpoint_name = f"single_{entity_name}"
+    by_id_endpoint_name = f"single_{entity_name[:-1]}"
 
     @app.route(list_endpoint, endpoint=list_endpoint_name)
     def list_entities():
@@ -66,11 +90,10 @@ def register_entity_routes(entity_name, template_name, repo_class, app):
         except IntegrityError as err:
             if "UNIQUE constraint failed" in str(err):
                 err_msg = f"{name} already exists"
-                logger.warning(err_msg)
-                flash(err_msg, "error")
             else:
-                logger.warning(err_msg)
-                flash(f"Unexpected Error: {str(err)}", "error")
+                err_msg = f"Unexpected Error: {str(err)}"
+            logger.warning(err_msg)
+            flash(err_msg, "error")
         return redirect(list_endpoint)
 
     app.add_url_rule(

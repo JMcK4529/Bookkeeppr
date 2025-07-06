@@ -69,6 +69,11 @@ class CustomerRepository:
             cursor.execute(
                 "UPDATE customers SET name = ? WHERE id = ?", (name, id)
             )
+            # Propagate change to sales
+            cursor.execute(
+                "UPDATE sales SET customer_name = ? WHERE customer_id = ?",
+                (name, id),
+            )
             conn.commit()
             return self.read(id=id)
 

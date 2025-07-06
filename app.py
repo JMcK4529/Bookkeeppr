@@ -30,30 +30,6 @@ register_entity_routes(
     app=app,
 )
 
-
-# @app.route(
-#     "/suppliers/<int:supplier_id>", methods=["GET", "POST", "PATCH", "DELETE"]
-# )
-# def single_supplier(supplier_id):
-#     match request.method:
-#         case "GET":
-#             repo = supplier.SupplierRepository()
-#             supplier_obj = repo.read(id=supplier_id)
-#             if supplier_obj:
-#                 return render_template(
-#                     "supplier.html", supplier_obj=supplier_obj
-#                 )
-#             else:
-#                 flash("Supplier does not exist", "error")
-#                 return redirect(request.referrer or url_for("suppliers"))
-#         case "POST":
-#             pass
-#         case "PATCH":
-#             pass
-#         case "DELETE":
-#             pass
-
-
 register_entity_routes(
     entity_name="customers",
     template_name="customers.html",

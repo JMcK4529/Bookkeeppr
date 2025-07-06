@@ -14,8 +14,17 @@
             </thead>
             <tbody>
                 <tr>
-                    <td>{{ customer_obj.name }}</td>
-                    <td><a>[cog icon]</a></td>
+                    <td>
+                        <span id="customer-name">{{ customer_obj.name }}</span>
+                        <form id="edit-form" style="display: none;" onsubmit="submitCustomerEdit(event, '{{ customer_obj.id }}')">
+                            <input type="text" id="name-input" name="name" value="{{ customer_obj.name }}" required>
+                            <button type="submit">💾Submit</button>
+                            <button type="button" onclick="cancelEdit()">❌Cancel</button>
+                        </form>
+                    </td>
+                    <td>
+                        <button type="button" onclick="enableEdit()">⚙️</button>
+                    </td>
                 </tr>
             </tbody>
         </table>
@@ -23,5 +32,40 @@
         <p>The customer could not be found.</p>
     {% endif %}
 </div>
+
+<script>
+function enableEdit() {
+    document.getElementById("customer-name").style.display = "none";
+    document.getElementById("edit-form").style.display = "inline";
+    document.getElementById("name-input").focus();
+}
+
+function cancelEdit() {
+    document.getElementById("edit-form").style.display = "none";
+    document.getElementById("customer-name").style.display = "inline";
+}
+
+function submitCustomerEdit(event, id) {
+    event.preventDefault(); // prevent form reload
+    const newName = document.getElementById("name-input").value;
+    const currentName = document.getElementById("customer-name").textContent;
+
+    if (newName && newName !== currentName) {
+        fetch(`/customers/${id}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({ name: newName }),
+        }).then(async response => {
+            const msg = await response.text();
+            console.warn("PATCH result:", response.status, msg);
+            location.reload();
+        });
+    } else {
+        cancelEdit();
+    }
+}
+</script>
 
 {% endblock %}
