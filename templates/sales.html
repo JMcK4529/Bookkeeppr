@@ -41,32 +41,41 @@
     </div>
 </form>
 
-<table>
-    <thead>
-        <tr>
-            <th>Invoice Number</th>
-            <th>Customer Name</th>
-            <th>Net Amount (£)</th>
-            <th>VAT %</th>
-            <th>Payment Method</th>
-            <th>Timestamp</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for sale in sales %}
+<div id="results">
+    <table>
+        <thead>
             <tr>
-                <td>{{ sale.invoice_number }}</td>
-                <td>{{ sale.customer_name }}</td>
-                <td>{{ "%.2f"|format(sale.net_amount) }}</td>
-                <td>{{ 100*sale.vat_percent }}</td>
-                <td>{{ sale.payment_method }}</td>
-                <td>{{ sale.timestamp }}</td>
+                <th>Invoice Number</th>
+                <th>Customer Name</th>
+                <th>Net Amount (£)</th>
+                <th>VAT %</th>
+                <th>Payment Method</th>
+                <th>Timestamp</th>
             </tr>
-        {% else %}
-            <tr>
-                <td colspan="6">No sales found.</td>
-            </tr>
-        {% endfor %}
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            {% for sale in sales %}
+                <tr>
+                    <td>{{ sale.invoice_number }}</td>
+                    <td>{{ sale.customer_name }}</td>
+                    <td>{{ "%.2f"|format(sale.net_amount) }}</td>
+                    <td>{{ 100*sale.vat_percent }}</td>
+                    <td>{{ sale.payment_method }}</td>
+                    <td>{{ sale.timestamp }}</td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="6">No sales found.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div id="pagination-controls" style="margin-top: 1rem;"></div>
+
+<script>
+  window.PAGINATE_PER_PAGE = 3;
+</script>
+<script src="{{ url_for('static', filename='pagination.js') }}"></script>
 {% endblock %}

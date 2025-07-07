@@ -37,6 +37,8 @@
     {% endif %}
 </div>
 
+<div id="pagination-controls" style="margin-top: 1rem;"></div>
+
 <!-- Hidden form modal or inline for new customer -->
 <div id="new-customer-form" style="display:none; margin-top: 1rem;">
     <form method="post" action="/customers/create">
@@ -45,6 +47,10 @@
     </form>
 </div>
 
+<script>
+  window.PAGINATE_PER_PAGE = 10;
+</script>
+<script src="{{ url_for('static', filename='pagination.js') }}"></script>
 <script>
 function openForm() {
     document.getElementById("new-customer-form").style.display = "block";

@@ -15,15 +15,13 @@
             <tbody>
                 <tr>
                     <td>
-                        <span id="customer-name">{{ customer_obj.name }}</span>
-                        <form id="edit-form" style="display: none;" onsubmit="submitCustomerEdit(event, '{{ customer_obj.id }}')">
-                            <input type="text" id="name-input" name="name" value="{{ customer_obj.name }}" required>
+                        <span class="customer-name">{{ customer_obj.name }}</span>
+                        <form class="edit-form" style="display: none;" data-customer-id="{{ customer_obj.id }}" onsubmit="submitCustomerEdit(event, this)">
+                            <input type="text" class="name-input" name="name" value="{{ customer_obj.name }}" required>
                             <button type="submit">💾Submit</button>
-                            <button type="button" onclick="cancelEdit()">❌Cancel</button>
+                            <button type="button" onclick="cancelEdit(this)">❌Cancel</button>
                         </form>
-                    </td>
-                    <td>
-                        <button type="button" onclick="enableEdit()">⚙️</button>
+                        <button type="button" onclick="enableEdit(this)">⚙️</button>
                     </td>
                 </tr>
             </tbody>
@@ -34,21 +32,25 @@
 </div>
 
 <script>
-function enableEdit() {
-    document.getElementById("customer-name").style.display = "none";
-    document.getElementById("edit-form").style.display = "inline";
-    document.getElementById("name-input").focus();
+function enableEdit(button) {
+    const row = button.closest("tr");
+    row.querySelector(".customer-name").style.display = "none";
+    row.querySelector(".edit-form").style.display = "inline";
+    row.querySelector(".name-input").focus();
 }
 
-function cancelEdit() {
-    document.getElementById("edit-form").style.display = "none";
-    document.getElementById("customer-name").style.display = "inline";
+function cancelEdit(button) {
+    const row = button.closest("tr");
+    row.querySelector(".edit-form").style.display = "none";
+    row.querySelector(".customer-name").style.display = "inline";
 }
 
-function submitCustomerEdit(event, id) {
-    event.preventDefault(); // prevent form reload
-    const newName = document.getElementById("name-input").value;
-    const currentName = document.getElementById("customer-name").textContent;
+function submitCustomerEdit(event, form) {
+    event.preventDefault();
+    const row = form.closest("tr");
+    const newName = row.querySelector(".name-input").value;
+    const currentName = row.querySelector(".customer-name").textContent;
+    const id = form.dataset.customerId;
 
     if (newName && newName !== currentName) {
         fetch(`/customers/${id}`, {
@@ -63,7 +65,7 @@ function submitCustomerEdit(event, id) {
             location.reload();
         });
     } else {
-        cancelEdit();
+        cancelEdit(form.querySelector("button[type='button']"));
     }
 }
 </script>

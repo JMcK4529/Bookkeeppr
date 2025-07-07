@@ -71,44 +71,53 @@
     </div>
 </form>
 
-<table>
-    <thead>
-        <tr>
-            <th>Invoice Number</th>
-            <th>Supplier Name</th>
-            <th>Net (£)</th>
-            <th>VAT %</th>
-            <th>Goods</th>
-            <th>Utilities</th>
-            <th>Motor</th>
-            <th>Sundries</th>
-            <th>Misc.</th>
-            <th>Payment</th>
-            <th>Capital Spend?</th>
-            <th>Timestamp</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for purchase in purchases %}
+<div id="results">
+    <table>
+        <thead>
             <tr>
-                <td>{{ purchase.supplier_invoice_code }}</td>
-                <td>{{ purchase.supplier_name }}</td>
-                <td>{{ "%.2f"|format(purchase.net_amount) }}</td>
-                <td>{{ 100*purchase.vat_percent }}%</td>
-                <td>{{ "%.2f"|format(purchase.goods) }}</td>
-                <td>{{ "%.2f"|format(purchase.utilities) }}</td>
-                <td>{{ "%.2f"|format(purchase.motor_expenses) }}</td>
-                <td>{{ "%.2f"|format(purchase.sundries) }}</td>
-                <td>{{ "%.2f"|format(purchase.miscellaneous) }}</td>
-                <td>{{ purchase.payment_method }}</td>
-                <td>{{ "Yes" if purchase.capital_spend else "No" }}</td>
-                <td>{{ purchase.timestamp }}</td>
+                <th>Invoice Number</th>
+                <th>Supplier Name</th>
+                <th>Net (£)</th>
+                <th>VAT %</th>
+                <th>Goods</th>
+                <th>Utilities</th>
+                <th>Motor</th>
+                <th>Sundries</th>
+                <th>Misc.</th>
+                <th>Payment</th>
+                <th>Capital Spend?</th>
+                <th>Timestamp</th>
             </tr>
-        {% else %}
-            <tr>
-                <td colspan="11">No purchases found.</td>
-            </tr>
-        {% endfor %}
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            {% for purchase in purchases %}
+                <tr>
+                    <td>{{ purchase.supplier_invoice_code }}</td>
+                    <td>{{ purchase.supplier_name }}</td>
+                    <td>{{ "%.2f"|format(purchase.net_amount) }}</td>
+                    <td>{{ 100*purchase.vat_percent }}%</td>
+                    <td>{{ "%.2f"|format(purchase.goods) }}</td>
+                    <td>{{ "%.2f"|format(purchase.utilities) }}</td>
+                    <td>{{ "%.2f"|format(purchase.motor_expenses) }}</td>
+                    <td>{{ "%.2f"|format(purchase.sundries) }}</td>
+                    <td>{{ "%.2f"|format(purchase.miscellaneous) }}</td>
+                    <td>{{ purchase.payment_method }}</td>
+                    <td>{{ "Yes" if purchase.capital_spend else "No" }}</td>
+                    <td>{{ purchase.timestamp }}</td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="11">No purchases found.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div id="pagination-controls" style="margin-top: 1rem;"></div>
+
+<script>
+  window.PAGINATE_PER_PAGE = 10;
+</script>
+<script src="{{ url_for('static', filename='pagination.js') }}"></script>
 {% endblock %}

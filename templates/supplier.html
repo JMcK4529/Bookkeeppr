@@ -14,8 +14,15 @@
             </thead>
             <tbody>
                 <tr>
-                    <td>{{ supplier_obj.name }}</td>
-                    <td><a>[cog icon]</a></td>
+                    <td>
+                        <span class="supplier-name">{{ supplier_obj.name }}</span>
+                        <form class="edit-form" style="display: none;" data-supplier-id="{{ supplier_obj.id }}" onsubmit="submitSupplierEdit(event, this)">
+                            <input type="text" class="name-input" name="name" value="{{ supplier_obj.name }}" required>
+                            <button type="submit">💾</button>
+                            <button type="button" onclick="cancelEdit(this)">❌</button>
+                        </form>
+                        <button type="button" onclick="enableEdit(this)">⚙️</button>
+                    </td>
                 </tr>
             </tbody>
         </table>
@@ -24,4 +31,42 @@
     {% endif %}
 </div>
 
+<script>
+function enableEdit(button) {
+    const row = button.closest("tr");
+    row.querySelector(".supplier-name").style.display = "none";
+    row.querySelector(".edit-form").style.display = "inline";
+    row.querySelector(".name-input").focus();
+}
+
+function cancelEdit(button) {
+    const row = button.closest("tr");
+    row.querySelector(".edit-form").style.display = "none";
+    row.querySelector(".supplier-name").style.display = "inline";
+}
+
+function submitSupplierEdit(event, form) {
+    event.preventDefault();
+    const row = form.closest("tr");
+    const newName = row.querySelector(".name-input").value;
+    const currentName = row.querySelector(".supplier-name").textContent;
+    const id = form.dataset.supplierId;
+
+    if (newName && newName !== currentName) {
+        fetch(`/suppliers/${id}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({ name: newName }),
+        }).then(async response => {
+            const msg = await response.text();
+            console.warn("PATCH result:", response.status, msg);
+            location.reload();
+        });
+    } else {
+        cancelEdit(form.querySelector("button[type='button']"));
+    }
+}
+</script>
 {% endblock %}
