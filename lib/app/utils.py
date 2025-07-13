@@ -8,12 +8,13 @@ from flask import (
     request,
 )
 from sqlite3 import IntegrityError
+from lib.db import utils as dbutils
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def create_single_entity_view(entity_name, repo_class):
+def create_single_entity_view(entity_name, model_class, repo_class):
     def view(**kwargs):
         entity_id = kwargs[f"{entity_name[:-1]}_id"]
         repo = repo_class()
@@ -38,7 +39,7 @@ def create_single_entity_view(entity_name, repo_class):
             case "PATCH":
                 name = request.form.get("name", "").strip()
                 try:
-                    repo.update(id=entity_id, name=name)
+                    repo.update(model_class(id=entity_id, name=name))
                     flash(
                         f"{entity_name[:-1].capitalize()} updated successfully",
                         "success",
@@ -48,19 +49,64 @@ def create_single_entity_view(entity_name, repo_class):
                     if "UNIQUE constraint failed" in str(err):
                         err_msg = f"{name} already exists"
                     else:
-                        err_msg = f"Unexpected Error: {str(err)}"
+                        err_msg = f"Unexpected error: {str(err)}"
                     logger.warning(err_msg)
                     flash(err_msg, "error")
                     response = make_response(f"Update failed. {err_msg}", 409)
                 response.headers["Content-Type"] = "text/plain; charset=utf-8"
                 return response
             case "DELETE":
-                pass
+                # Assume by this point we have safely confirmed the delete command
+                entity = repo.read(id=entity_id)
+                if not entity:
+                    err_msg = f"{entity_name[:-1].capitalize()} not found."
+                    logger.warning(f"[DELETE] {err_msg}")
+                    flash(err_msg, "error")
+                    response = make_response(err_msg, 404)
+                    response.headers["Content-Type"] = (
+                        "text/plain; charset=utf-8"
+                    )
+                    return response
+
+                safe_to_delete = False
+                # Create the recovery DB
+                try:
+                    dbutils.backup_deleted_entity(entity, repo_class)
+                    safe_to_delete = True
+                except Exception as err:
+                    err_msg = f"Data backup failed. Delete operation on {entity.name} aborted."
+                    logger.warning(f"[DELETE] {err_msg}.\n" + f"{err}")
+                    flash(err_msg, "error")
+                    response = make_response(err_msg, 500)
+
+                if safe_to_delete:
+                    try:
+                        repo.delete(entity.id)
+                        flash(
+                            f"{entity.name} was successfully deleted.",
+                            "success",
+                        )
+                        response = make_response("OK", 204)
+                    except IntegrityError as err:
+                        err_msg = f"Delete blocked due to data constraint: {str(err)}"
+                        logger.warning(f"[DELETE] {err_msg}")
+                        flash(err_msg, "error")
+                        response = make_response(err_msg, 409)
+                    except Exception as err:
+                        err_msg = f"Unexpected error: {str(err)}"
+                        logger.error(f"[DELETE] {err_msg}")
+                        flash(f"{entity.name} could not be deleted.", "error")
+                        response = make_response(f"{err_msg}", 500)
+
+                response.headers["Content-Type"] = "text/plain; charset=utf-8"
+                return response
 
     return view
 
 
-def register_entity_routes(entity_name, template_name, repo_class, app):
+def register_entity_routes(
+    entity_name, template_name, model_class, repo_class, app
+):
     list_endpoint = f"/{entity_name}"
     create_endpoint = f"/{entity_name}/create"
     by_id_endpoint = f"/{entity_name}/<int:{entity_name[:-1]}_id>"
@@ -85,7 +131,7 @@ def register_entity_routes(entity_name, template_name, repo_class, app):
         name = request.form.get("name")
         repo = repo_class()
         try:
-            new_entity = repo.create(None, name)
+            new_entity = repo.create(model_class(None, name))
             flash(f"Successfully added {entity_name[:-1]}: {name}", "success")
         except IntegrityError as err:
             if "UNIQUE constraint failed" in str(err):
@@ -99,6 +145,8 @@ def register_entity_routes(entity_name, template_name, repo_class, app):
     app.add_url_rule(
         rule=by_id_endpoint,
         endpoint=by_id_endpoint_name,
-        view_func=create_single_entity_view(entity_name, repo_class),
+        view_func=create_single_entity_view(
+            entity_name, model_class, repo_class
+        ),
         methods=["GET", "POST", "PATCH", "DELETE"],
     )

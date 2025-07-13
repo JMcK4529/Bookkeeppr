@@ -9,14 +9,24 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def get_db_path() -> Path:
-    """Return the full path to the Bookkeeppr database, platform-aware."""
+def get_app_folder_path() -> Path:
+    """Return the full path to the Bookkeeppr app folder, platform-aware."""
     system = platform.system()
     if system == "Windows":
         base = os.getenv("LOCALAPPDATA") or os.getenv("APPDATA")
-        return Path(base) / "Bookkeeppr" / "bookkeeppr.db"
+        return Path(base) / "Bookkeeppr"
     else:
-        return Path.home() / ".bookkeeppr.db"
+        return Path.home() / ".Bookkeeppr"
+
+
+def get_db_path() -> Path:
+    """Return the full path to the Bookkeeppr database, platform-aware."""
+    return get_app_folder_path() / ".bookkeeppr.db"
+
+
+def get_recovery_path() -> Path:
+    """Return the full path to the database recovery folder, platform-aware."""
+    return get_app_folder_path() / "recovery"
 
 
 def database_exists() -> bool:
@@ -38,6 +48,9 @@ def init_db() -> None:
     # Ensure parent directory exists
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Ensure recovery directory exists
+    get_recovery_path().mkdir(parents=True, exist_ok=True)
+
     # Connect and initialize schema
     conn = sqlite3.connect(db_path)
     schema_path = Path(__file__).parent / "schema.sql"
@@ -49,6 +62,47 @@ def init_db() -> None:
     conn.commit()
     conn.close()
     logger.info(f"[DB] Initialized new database at {db_path}")
+
+
+# --- Recovery DB utility ---
+def create_recovery_db() -> Path:
+    """Create a recovery SQLite DB."""
+    recovery_dir = get_recovery_path()
+    recovery_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    recovery_path = recovery_dir / f"{timestamp}.db"
+
+    # Create empty DB
+    schema_path = Path(__file__).parent / "schema.sql"
+    conn = sqlite3.connect(recovery_path)
+    with open(schema_path, "r", encoding="utf-8") as f:
+        schema_sql = f.read()
+        conn.executescript(schema_sql)
+
+    return recovery_path
+
+
+def backup_deleted_entity(entity, repo_class) -> None:
+    """Populate a recovery database with an entity and its related transactions."""
+    try:
+        recovery_db_path = create_recovery_db()
+        recovery_repo = repo_class(db_path=recovery_db_path)
+        recovery_repo.create(entity)
+        transactions_repo = recovery_repo.transaction_repository(
+            db_path=recovery_db_path
+        )
+        transactions = recovery_repo.get_transactions(entity)
+        for transaction in transactions:
+            transactions_repo.create(transaction)
+        logger.info(
+            "[RECOVERY] Successfully backed up entity and transactions."
+        )
+    except Exception as err:
+        logger.error(f"[RECOVERY] Recovery failed due to error:\n{err}")
+        raise
+
+    return
 
 
 def normalize_datetime(dt_str, output_format="%Y-%m-%d %H:%M:%S"):

@@ -2,14 +2,15 @@ import logging
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
+from lib.db.transaction import Transaction, TransactionRepository
 from lib.db.utils import get_db_path, normalize_datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class Purchase:
+class Purchase(Transaction):
     def __init__(
         self,
         id: Optional[int],
@@ -63,7 +64,7 @@ class Purchase:
         return f"Purchase(id={self.id}, internal_invoice_number='{self.internal_invoice_number}', supplier_name='{self.supplier_name}')"
 
 
-class PurchaseRepository:
+class PurchaseRepository(TransactionRepository[Purchase]):
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = db_path or get_db_path()
 
@@ -122,7 +123,7 @@ class PurchaseRepository:
             cursor.execute(
                 """
                 SELECT id, supplier_id, supplier_name, supplier_invoice_code, internal_invoice_number, net_amount,
-                       vat_percent, goods, utilities, motor_expenses, sundries,
+                       vat_percent, goods, utilities, motor_expenses, sundries, miscellaneous,
                        payment_method, timestamp, capital_spend
                 FROM purchases WHERE id = ?""",
                 (id,),
@@ -176,7 +177,7 @@ class PurchaseRepository:
             conn.commit()
             return purchase
 
-    def search(self, filters: dict) -> list[Purchase]:
+    def search(self, filters: dict) -> List[Purchase]:
         query = """
             SELECT id, supplier_id, supplier_name, supplier_invoice_code, internal_invoice_number, net_amount, vat_percent, goods, utilities, motor_expenses, sundries, miscellaneous, payment_method, timestamp, capital_spend
             FROM purchases WHERE 1=1
@@ -272,7 +273,20 @@ class PurchaseRepository:
             rows = cursor.fetchall()
             return [Purchase(*row) for row in rows]
 
-    def all(self) -> list[Purchase]:
+    def search_by_parent(self, entity) -> List[Purchase]:
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT id, supplier_id, supplier_name, supplier_invoice_code, internal_invoice_number, net_amount, vat_percent, goods, utilities, motor_expenses, sundries, miscellaneous, payment_method, timestamp, capital_spend
+                FROM purchases WHERE supplier_id = ?
+                """,
+                (entity.id,),
+            )
+            rows = cursor.fetchall()
+            return [Purchase(*row) for row in rows]
+
+    def all(self) -> List[Purchase]:
         with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute(

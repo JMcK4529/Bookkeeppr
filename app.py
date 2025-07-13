@@ -26,6 +26,7 @@ def index():
 register_entity_routes(
     entity_name="suppliers",
     template_name="suppliers.html",
+    model_class=supplier.Supplier,
     repo_class=supplier.SupplierRepository,
     app=app,
 )
@@ -33,6 +34,7 @@ register_entity_routes(
 register_entity_routes(
     entity_name="customers",
     template_name="customers.html",
+    model_class=customer.Customer,
     repo_class=customer.CustomerRepository,
     app=app,
 )

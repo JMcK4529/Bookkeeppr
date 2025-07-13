@@ -2,14 +2,15 @@ import logging
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
+from lib.db.transaction import Transaction, TransactionRepository
 from lib.db.utils import get_db_path, normalize_datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class Sale:
+class Sale(Transaction):
     def __init__(
         self,
         id: Optional[int],
@@ -41,7 +42,7 @@ class Sale:
         return f"Sale(id={self.id}, invoice_number='{self.invoice_number}', customer_name='{self.customer_name}')"
 
 
-class SaleRepository:
+class SaleRepository(TransactionRepository[Sale]):
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = db_path or get_db_path()
 
@@ -87,7 +88,40 @@ class SaleRepository:
             row = cursor.fetchone()
             return Sale(*row) if row else None
 
-    def search(self, filters: dict) -> list[Sale]:
+    def update(self, sale: Sale) -> Optional[Sale]:
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE sales SET
+                    customer_id = ?, customer_name = ?, invoice_number = ?, net_amount = ?,
+                    vat_percent = ?, payment_method = ?, timestamp = ?
+                WHERE id = ?""",
+                (
+                    sale.customer_id,
+                    sale.customer_name,
+                    sale.invoice_number,
+                    sale.net_amount,
+                    sale.vat_percent,
+                    sale.payment_method,
+                    sale.timestamp,
+                    sale.id,
+                ),
+            )
+            conn.commit()
+            return self.read(sale.id)
+
+    def delete(self, id: int) -> Optional[Sale]:
+        sale = self.read(id)
+        if not sale:
+            return None
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM sales WHERE id = ?", (id,))
+            conn.commit()
+            return sale
+
+    def search(self, filters: dict) -> List[Sale]:
         query = """
             SELECT id, customer_id, customer_name, invoice_number, net_amount, vat_percent, payment_method, timestamp
             FROM sales WHERE 1=1
@@ -149,7 +183,20 @@ class SaleRepository:
             rows = cursor.fetchall()
             return [Sale(*row) for row in rows]
 
-    def all(self) -> list[Sale]:
+    def search_by_parent(self, entity) -> List[Sale]:
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT id, customer_id, customer_name, invoice_number, net_amount, vat_percent, payment_method, timestamp
+                FROM sales WHERE customer_id = ?
+                """,
+                (entity.id,),
+            )
+            rows = cursor.fetchall()
+            return [Sale(*row) for row in rows]
+
+    def all(self) -> List[Sale]:
         with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute(

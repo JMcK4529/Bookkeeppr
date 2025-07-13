@@ -1,14 +1,16 @@
 import logging
 import sqlite3
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
+from lib.db.entity import Entity, EntityRepository
+from lib.db.purchase import Purchase, PurchaseRepository
 from lib.db.utils import get_db_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class Supplier:
+class Supplier(Entity):
     def __init__(self, id: Optional[int], name: str) -> None:
         self.id = id
         self.name = name
@@ -24,27 +26,31 @@ class Supplier:
         return f"Supplier(id={self.id}, name='{self.name}')"
 
 
-class SupplierRepository:
+class SupplierRepository(EntityRepository[Supplier]):
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = db_path or get_db_path()
 
     def _connect(self):
         return sqlite3.connect(self.db_path)
 
-    def create(self, id: Optional[int], name: str) -> Supplier:
+    def create(self, supplier: Supplier) -> Supplier:
+        created_supplier = None
         with self._connect() as conn:
             cursor = conn.cursor()
-            if id is None:
+            if supplier.id is None:
                 cursor.execute(
-                    "INSERT INTO suppliers (name) VALUES (?)", (name,)
+                    "INSERT INTO suppliers (name) VALUES (?)", (supplier.name,)
                 )
+                conn.commit()
+                created_supplier = Supplier(cursor.lastrowid, supplier.name)
             else:
                 cursor.execute(
                     "INSERT INTO suppliers (id, name) VALUES (?, ?)",
-                    (id, name),
+                    (supplier.id, supplier.name),
                 )
-            conn.commit()
-            return Supplier(cursor.lastrowid if id is None else id, name)
+                conn.commit()
+                created_supplier = supplier
+            return created_supplier
 
     def read(
         self, id: Optional[int] = None, name: Optional[str] = None
@@ -67,18 +73,19 @@ class SupplierRepository:
             row = cursor.fetchone()
             return Supplier(*row) if row else None
 
-    def update(self, id: int, name: str) -> Supplier:
+    def update(self, supplier: Supplier) -> Supplier:
         with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE suppliers SET name = ? WHERE id = ?", (name, id)
+                "UPDATE suppliers SET name = ? WHERE id = ?",
+                (supplier.name, supplier.id),
             )
             cursor.execute(
                 "UPDATE purchases SET supplier_name = ? WHERE supplier_id = ?",
-                (name, id),
+                (supplier.name, supplier.id),
             )
             conn.commit()
-            return self.read(id=id)
+            return self.read(id=supplier.id)
 
     def delete(self, id: int) -> Optional[Supplier]:
         supplier = self.read(id=id)
@@ -87,10 +94,14 @@ class SupplierRepository:
         with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM suppliers WHERE id = ?", (id,))
+            # Propagate deletion to purchases
+            cursor.execute(
+                "DELETE FROM purchases WHERE supplier_id = ?", (id,)
+            )
             conn.commit()
             return supplier
 
-    def search(self, name_query: str) -> list[Supplier]:
+    def search(self, name_query: str) -> List[Supplier]:
         with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -108,3 +119,14 @@ class SupplierRepository:
             )
             rows = cursor.fetchall()
             return [Supplier(id=row[0], name=row[1]) for row in rows]
+
+    def transaction_repository(
+        self, db_path: Optional[Path] = None
+    ) -> PurchaseRepository:
+        repo = PurchaseRepository(db_path)
+        return repo
+
+    def get_transactions(self, supplier: Supplier) -> List[Purchase]:
+        repo = self.transaction_repository()
+        transactions = repo.search_by_parent(supplier)
+        return transactions
