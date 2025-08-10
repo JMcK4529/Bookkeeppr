@@ -6,9 +6,25 @@ import sys
 import threading
 import time
 import webview
-from flask import Flask, flash, redirect, render_template, url_for, request
+from flask import (
+    Flask,
+    flash,
+    redirect,
+    render_template,
+    send_file,
+    url_for,
+    request,
+)
+from flask_apscheduler import APScheduler
+from io import BytesIO
 from sqlite3 import IntegrityError
-from lib.app.utils import register_entity_routes
+from lib.app.utils import (
+    SchedulerConfig,
+    register_entity_routes,
+    register_transaction_routes,
+    open_export_file_picker,
+    export_to_xlsx,
+)
 from lib.db import utils, customer, purchase, sale, supplier
 
 logging.basicConfig(level=logging.INFO)
@@ -16,6 +32,11 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
+app.config.from_object(SchedulerConfig())
+
+# Start scheduler
+scheduler = APScheduler()
+scheduler.init_app(app)
 
 
 @app.route("/")
@@ -40,197 +61,80 @@ register_entity_routes(
 )
 
 
-@app.route("/sales", methods=["GET"])
-def sales():
-    repo = sale.SaleRepository()
-    filters = {
-        "customer": request.args.get("customer", "").strip(),
-        "invoice": request.args.get("invoice", "").strip(),
-        "net": {},
-        "vat": [],
-        "payment": [],
-        "timeFrom": request.args.get("timeFrom", "").strip(),
-        "timeTo": request.args.get("timeTo", "").strip(),
-    }
+register_transaction_routes(
+    transaction_name="sales",
+    template_name="sales.html",
+    model_class=sale.Sale,
+    repo_class=sale.SaleRepository,
+    entity_repo_class=customer.CustomerRepository,
+    entity_class_name="Customer",
+    app=app,
+)
 
-    net_min = request.args.get("net_min")
-    net_max = request.args.get("net_max")
-    net_eq = request.args.get("net_eq")
-
-    if net_eq:
-        filters["net"]["eq"] = float(net_eq)
-    else:
-        if net_min:
-            filters["net"]["min"] = float(net_min)
-        if net_max:
-            filters["net"]["max"] = float(net_max)
-
-    vat_values = request.args.getlist("vat")
-    payment_values = request.args.getlist("payment")
-    if vat_values:
-        filters["vat"] = [float(v) for v in vat_values if v]
-    if payment_values:
-        filters["payment"] = [p for p in payment_values if p]
-
-    all_sales = repo.all()
-    vat_options = sorted(set(s.vat_percent for s in all_sales))
-    payment_options = sorted(set(s.payment_method for s in all_sales))
-
-    sales = repo.search(filters) if any(filters.values()) else repo.all()
-    return render_template(
-        "sales.html",
-        filters=filters,
-        sales=sales,
-        payment_options=payment_options,
-        vat_options=vat_options,
-    )
+register_transaction_routes(
+    transaction_name="purchases",
+    template_name="purchases.html",
+    model_class=purchase.Purchase,
+    repo_class=purchase.PurchaseRepository,
+    entity_repo_class=supplier.SupplierRepository,
+    entity_class_name="Supplier",
+    app=app,
+)
 
 
-@app.route("/sales/create", methods=["GET", "POST"])
-def create_sale():
-    repo = sale.SaleRepository()
-    customer_repo = customer.CustomerRepository()
-    customers = customer_repo.all()
-    render = render_template("create_sale.html", customers=customers)
-
+@app.route("/export", methods=["GET", "POST"])
+def export():
     if request.method == "POST":
-        try:
-            customer_name = request.form.get("customer_name")
-            customer_obj = next(
-                (c for c in customers if c.name == customer_name), None
+        transaction_type = request.form.get("transaction_type")
+        start_date = request.form.get("start_date")
+        end_date = request.form.get("end_date")
+
+        if app.debug:
+            # Debug mode: send file to browser
+            file_stream = BytesIO()
+            file_stream = export_to_xlsx(
+                transaction_type, start_date, end_date, file_stream
             )
-            if not customer_obj:
-                flash("Invalid customer selected", "error")
-                return redirect("/purchases")
-
-            new_sale = sale.Sale(
-                id=None,
-                customer_id=customer_obj.id,
-                customer_name=customer_obj.name,
-                invoice_number=request.form["invoice_number"],
-                net_amount=float(request.form["net_amount"]),
-                vat_percent=float(request.form["vat_percent"]),
-                payment_method=request.form["payment_method"],
-                timestamp=request.form["timestamp"],
+            filename = f"{transaction_type}_record.xlsx"
+            return send_file(
+                file_stream,
+                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                as_attachment=True,
+                download_name=filename,
             )
-            repo.create(new_sale)
-            flash("Sale created successfully.", "success")
-            return redirect("/sales/create")
-        except IntegrityError as err:
-            logger.warning(err)
-            flash(f"Unexpected Error: {str(err)}", "error")
-
-    return render
-
-
-@app.route("/purchases", methods=["GET"])
-def purchases():
-    repo = purchase.PurchaseRepository()
-    filters = {
-        "supplier": request.args.get("supplier", "").strip(),
-        "supplier_invoice": request.args.get("supplier_invoice", "").strip(),
-        "internal_invoice": request.args.get("internal_invoice", "").strip(),
-        "net": {},
-        "goods": {},
-        "utilities": {},
-        "motor_expenses": {},
-        "sundries": {},
-        "miscellaneous": {},
-        "vat": [],
-        "payment": [],
-        "capital_spend": request.args.get("capital_spend", "").strip(),
-        "timeFrom": request.args.get("timeFrom", "").strip(),
-        "timeTo": request.args.get("timeTo", "").strip(),
-    }
-
-    def parse_range(prefix):
-        result = {}
-        min_val = request.args.get(f"{prefix}_min")
-        max_val = request.args.get(f"{prefix}_max")
-        eq_val = request.args.get(f"{prefix}_eq")
-        if eq_val:
-            result["eq"] = float(eq_val)
         else:
-            if min_val:
-                result["min"] = float(min_val)
-            if max_val:
-                result["max"] = float(max_val)
-        return result
+            # Production mode: show file picker and save to disk
+            path = open_export_file_picker(transaction_type)
+            if not path:
+                flash("Export cancelled — no file selected.", "error")
+                return redirect(url_for("export"))
 
-    filters["net"] = parse_range("net")
-    filters["goods"] = parse_range("goods")
-    filters["utilities"] = parse_range("utilities")
-    filters["motor_expenses"] = parse_range("motor_expenses")
-    filters["sundries"] = parse_range("sundries")
-    filters["miscellaneous"] = parse_range("miscellaneous")
-    vat_values = request.args.getlist("vat")
-    payment_values = request.args.getlist("payment")
-    if vat_values:
-        filters["vat"] = [float(v) for v in vat_values if v]
-    if payment_values:
-        filters["payment"] = [p for p in payment_values if p]
+            _ = export_to_xlsx(transaction_type, start_date, end_date, path)
 
-    all_purchases = repo.all()
-    vat_options = sorted(set(p.vat_percent for p in all_purchases))
-    payment_options = sorted(set(p.payment_method for p in all_purchases))
-    purchases = (
-        repo.search(filters) if any(filters.values()) else all_purchases
-    )
+            flash(f"Exported to {path}", "success")
+            return redirect(url_for("export"))
 
-    return render_template(
-        "purchases.html",
-        filters=filters,
-        purchases=purchases,
-        vat_options=vat_options,
-        payment_options=payment_options,
-    )
+    return render_template("export.html")
 
 
-@app.route("/purchases/create", methods=["GET", "POST"])
-def create_purchase():
-    repo = purchase.PurchaseRepository()
-    suppliers = supplier.SupplierRepository().all()
+# Temporary test route for flash messages
+@app.route("/test/flash")
+def test_flash():
+    return render_template("test_flash.html")
 
-    if request.method == "POST":
-        supplier_name = request.form.get("supplier_name")
-        supplier_obj = next(
-            (s for s in suppliers if s.name == supplier_name), None
-        )
-        if not supplier_obj:
-            flash("Invalid supplier selected", "error")
-            return redirect("/purchases")
 
-        timestamp = request.form["timestamp"]
-        new_purchase = purchase.Purchase(
-            id=None,
-            supplier_id=supplier_obj.id,
-            supplier_name=supplier_obj.name,
-            supplier_invoice_code=request.form.get("supplier_invoice_code"),
-            internal_invoice_number=request.form.get(
-                "internal_invoice_number"
-            ),
-            net_amount=float(request.form.get("net_amount")),
-            vat_percent=float(request.form.get("vat_percent")),
-            goods=float(request.form.get("goods")),
-            utilities=float(request.form.get("utilities")),
-            motor_expenses=float(request.form.get("motor_expenses")),
-            sundries=float(request.form.get("sundries")),
-            miscellaneous=float(request.form.get("miscellaneous")),
-            payment_method=request.form.get("payment_method"),
-            timestamp=timestamp,
-            capital_spend=bool(request.form.get("capital_spend")),
-        )
+@app.route("/test/flash/success", methods=["POST"])
+def trigger_success():
+    length = secrets.randbelow(200) + 4
+    flash(f"Success: {secrets.token_hex(length)}", "success")
+    return redirect("/test/flash")
 
-        try:
-            repo.create(new_purchase)
-            flash("Purchase created successfully.", "success")
-        except IntegrityError as err:
-            logger.warning(err)
-            flash(f"Unexpected Error: {str(err)}", "error")
 
-        return redirect("/purchases")
-
-    return render_template("create_purchase.html", suppliers=suppliers)
+@app.route("/test/flash/error", methods=["POST"])
+def trigger_error():
+    length = secrets.randbelow(200) + 4
+    flash(f"Error: {secrets.token_hex(length)}", "error")
+    return redirect("/test/flash")
 
 
 def run_flask(debug=False):
@@ -239,6 +143,13 @@ def run_flask(debug=False):
 
 def main():
     debug_mode = len(sys.argv) > 1 and sys.argv[1] == "debug"
+
+    try:
+        logger.info("[CLEANUP] Running startup housekeeping...")
+        utils.delete_old_recovery_dbs(older_than_days=25)
+    except Exception as e:
+        logger.error(f"[CLEANUP] Startup housekeeping failed: {e}")
+    scheduler.start()
 
     if debug_mode:
         run_flask(debug=True)  # allows reloader, runs in main thread
@@ -259,7 +170,7 @@ def main():
         try:
             webview.start()
         finally:
-            print("[APP] Window closed, exiting...")
+            logger.info("[APP] Window closed, exiting...")
             sys.exit(0)
 
 

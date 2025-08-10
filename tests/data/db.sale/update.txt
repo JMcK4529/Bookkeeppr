@@ -1,0 +1,42 @@
+[
+    {
+        "id": 1,
+        "customer_id": 101,
+        "customer_name": "CustomerName1",
+        "invoice_number": "INV-2024-001",
+        "net_amount": 100.00,
+        "vat_percent": "20%",
+        "payment_method": "BACS",
+        "timestamp": "2024-01-01 09:00:00"
+    },
+    {
+        "id": 2,
+        "customer_id": 102,
+        "customer_name": "CustomerName2",
+        "invoice_number": "INV-2024-002",
+        "net_amount": 200.00,
+        "vat_percent": "0%",
+        "payment_method": "Cheque",
+        "timestamp": "2024-01-02 09:01:02"
+    },
+    {
+        "id": 3,
+        "customer_id": 103,
+        "customer_name": "CustomerName3",
+        "invoice_number": "INV-2025-003",
+        "net_amount": 300.00,
+        "vat_percent": "20%",
+        "payment_method": "Contra",
+        "timestamp": "2025-02-03 09:02:03"
+    },
+    {
+        "id": 4,
+        "customer_id": 104,
+        "customer_name": "CustomerName4",
+        "invoice_number": "INV-2025-004",
+        "net_amount": 400.00,
+        "vat_percent": "0%",
+        "payment_method": "Direct Debit",
+        "timestamp": "2025-11-14 19:33:44"
+    },
+]

@@ -50,13 +50,27 @@ class SaleRepository(TransactionRepository[Sale]):
         return sqlite3.connect(self.db_path)
 
     def create(self, sale: Sale) -> Sale:
+        created_sale = None
         with self._connect() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO sales (customer_id, customer_name, invoice_number, net_amount, vat_percent, payment_method, timestamp)
-                VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (
+            if sale.id is None:
+                cursor.execute(
+                    """
+                    INSERT INTO sales (customer_id, customer_name, invoice_number, net_amount, vat_percent, payment_method, timestamp)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        sale.customer_id,
+                        sale.customer_name,
+                        sale.invoice_number,
+                        sale.net_amount,
+                        sale.vat_percent,
+                        sale.payment_method,
+                        sale.timestamp,
+                    ),
+                )
+                conn.commit()
+                created_sale = Sale(
+                    cursor.lastrowid,
                     sale.customer_id,
                     sale.customer_name,
                     sale.invoice_number,
@@ -64,19 +78,27 @@ class SaleRepository(TransactionRepository[Sale]):
                     sale.vat_percent,
                     sale.payment_method,
                     sale.timestamp,
-                ),
-            )
-            conn.commit()
-            return Sale(
-                cursor.lastrowid,
-                sale.customer_id,
-                sale.customer_name,
-                sale.invoice_number,
-                sale.net_amount,
-                sale.vat_percent,
-                sale.payment_method,
-                sale.timestamp,
-            )
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO sales (id, customer_id, customer_name, invoice_number, net_amount, vat_percent, payment_method, timestamp)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        sale.id,
+                        sale.customer_id,
+                        sale.customer_name,
+                        sale.invoice_number,
+                        sale.net_amount,
+                        sale.vat_percent,
+                        sale.payment_method,
+                        sale.timestamp,
+                    ),
+                )
+                conn.commit()
+                created_sale = sale
+
+        return created_sale
 
     def read(self, id: int) -> Optional[Sale]:
         with self._connect() as conn:
@@ -174,8 +196,6 @@ class SaleRepository(TransactionRepository[Sale]):
         if timeTo:
             query += " AND timestamp <= ?"
             params.append(timeTo)
-
-        logger.info(f"query={query},params={params}")
 
         with self._connect() as conn:
             cursor = conn.cursor()

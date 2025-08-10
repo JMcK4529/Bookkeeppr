@@ -45,6 +45,7 @@
     <table>
         <thead>
             <tr>
+                <th class="cog-col"></th>
                 <th>Invoice Number</th>
                 <th>Customer Name</th>
                 <th>Net Amount (£)</th>
@@ -55,7 +56,8 @@
         </thead>
         <tbody>
             {% for sale in sales %}
-                <tr>
+                <tr class="clickable-row" data-href="/sales/{{ sale.id }}">
+                    <td class="cog-col"></td>
                     <td>{{ sale.invoice_number }}</td>
                     <td>{{ sale.customer_name }}</td>
                     <td>{{ "%.2f"|format(sale.net_amount) }}</td>
@@ -65,11 +67,15 @@
                 </tr>
             {% else %}
                 <tr>
-                    <td colspan="6">No sales found.</td>
+                    <td colspan="7">No sales found.</td>
                 </tr>
             {% endfor %}
         </tbody>
     </table>
+</div>
+
+<div id="floating-cog" style="display: none;">
+  <a id="floating-cog-link" href="">⚙️</a>
 </div>
 
 <div id="pagination-controls" style="margin-top: 1rem;"></div>
@@ -78,4 +84,6 @@
   window.PAGINATE_PER_PAGE = 3;
 </script>
 <script src="{{ url_for('static', filename='pagination.js') }}"></script>
+
+<script src="{{ url_for('static', filename='edit-cog.js') }}"></script>
 {% endblock %}

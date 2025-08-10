@@ -72,16 +72,37 @@ class PurchaseRepository(TransactionRepository[Purchase]):
         return sqlite3.connect(self.db_path)
 
     def create(self, purchase: Purchase) -> Purchase:
+        created_purchase = None
         with self._connect() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO purchases (
-                    supplier_id, supplier_name, supplier_invoice_code, internal_invoice_number, net_amount,
-                    vat_percent, goods, utilities, motor_expenses, sundries, miscellaneous,
-                    payment_method, timestamp, capital_spend
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
+            if purchase.id is None:
+                cursor.execute(
+                    """
+                    INSERT INTO purchases (
+                        supplier_id, supplier_name, supplier_invoice_code, internal_invoice_number, net_amount,
+                        vat_percent, goods, utilities, motor_expenses, sundries, miscellaneous,
+                        payment_method, timestamp, capital_spend
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        purchase.supplier_id,
+                        purchase.supplier_name,
+                        purchase.supplier_invoice_code,
+                        purchase.internal_invoice_number,
+                        purchase.net_amount,
+                        purchase.vat_percent,
+                        purchase.goods,
+                        purchase.utilities,
+                        purchase.motor_expenses,
+                        purchase.sundries,
+                        purchase.miscellaneous,
+                        purchase.payment_method,
+                        purchase.timestamp,
+                        int(purchase.capital_spend),
+                    ),
+                )
+                conn.commit()
+                created_purchase = Purchase(
+                    cursor.lastrowid,
                     purchase.supplier_id,
                     purchase.supplier_name,
                     purchase.supplier_invoice_code,
@@ -95,27 +116,37 @@ class PurchaseRepository(TransactionRepository[Purchase]):
                     purchase.miscellaneous,
                     purchase.payment_method,
                     purchase.timestamp,
-                    int(purchase.capital_spend),
-                ),
-            )
-            conn.commit()
-            return Purchase(
-                cursor.lastrowid,
-                purchase.supplier_id,
-                purchase.supplier_name,
-                purchase.supplier_invoice_code,
-                purchase.internal_invoice_number,
-                purchase.net_amount,
-                purchase.vat_percent,
-                purchase.goods,
-                purchase.utilities,
-                purchase.motor_expenses,
-                purchase.sundries,
-                purchase.miscellaneous,
-                purchase.payment_method,
-                purchase.timestamp,
-                purchase.capital_spend,
-            )
+                    purchase.capital_spend,
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO purchases (
+                        id, supplier_id, supplier_name, supplier_invoice_code, internal_invoice_number,
+                        net_amount, vat_percent, goods, utilities, motor_expenses, sundries, miscellaneous,
+                        payment_method, timestamp, capital_spend
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        purchase.id,
+                        purchase.supplier_id,
+                        purchase.supplier_name,
+                        purchase.supplier_invoice_code,
+                        purchase.internal_invoice_number,
+                        purchase.net_amount,
+                        purchase.vat_percent,
+                        purchase.goods,
+                        purchase.utilities,
+                        purchase.motor_expenses,
+                        purchase.sundries,
+                        purchase.miscellaneous,
+                        purchase.payment_method,
+                        purchase.timestamp,
+                        int(purchase.capital_spend),
+                    ),
+                )
+                conn.commit()
+                created_purchase = purchase
+        return created_purchase
 
     def read(self, id: int) -> Optional[Purchase]:
         with self._connect() as conn:
@@ -186,13 +217,13 @@ class PurchaseRepository(TransactionRepository[Purchase]):
         logger.info(f"Query filters: {filters}")
         # Filter by supplier and/or invoice number
         substring_filters = {
-            filters.get("supplier"): "supplier",
+            filters.get("supplier"): "supplier_name",
             filters.get("supplier_invoice"): "supplier_invoice_code",
             filters.get("internal_invoice"): "internal_invoice_number",
         }
         for substring in substring_filters.keys():
             if substring:
-                query += f" AND LOWER({substring_filters[substring]})"
+                query += f" AND LOWER({substring_filters[substring]}) LIKE ?"
                 params.append(f"%{substring.lower()}%")
 
         # Filter by cost or cost breakdown

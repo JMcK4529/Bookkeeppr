@@ -16,15 +16,17 @@
     {% if suppliers %}
         <table>
             <thead>
-                <tr><th>Supplier Name</th></tr>
+                <tr>
+                    <th class="cog-col"></th>
+                    <th>Supplier Name</th>
+                </tr>
             </thead>
             <tbody>
                 {% for supplier in suppliers %}
-                    <tr>
+                    <tr class="clickable-row" data-href="/suppliers/{{ supplier.id }}">
+                        <td class="cog-col"></td>
                         <td>
-                            <a href="{{ url_for('single_supplier', supplier_id=supplier.id) }}">
-                                {{ supplier.name }}
-                            </a>
+                            {{ supplier.name }}
                         </td>
                     </tr>
                 {% endfor %}
@@ -35,6 +37,10 @@
     {% else %}
         <p>No results.</p>
     {% endif %}
+</div>
+
+<div id="floating-cog" style="display: none;">
+  <a id="floating-cog-link" href="">⚙️</a>
 </div>
 
 <div id="pagination-controls" style="margin-top: 1rem;"></div>
@@ -56,4 +62,6 @@ function openForm() {
     document.getElementById("new-supplier-form").style.display = "block";
 }
 </script>
+
+<script src="{{ url_for('static', filename='edit-cog.js') }}"></script>
 {% endblock %}

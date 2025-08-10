@@ -22,6 +22,7 @@
                             <button type="button" onclick="cancelEdit(this)">❌</button>
                         </form>
                         <button type="button" onclick="enableEdit(this)">⚙️</button>
+                        <button type="button" onclick="confirmDelete({{ supplier_obj.id }}, '{{ supplier_obj.name }}')">🗑️</button>
                     </td>
                 </tr>
             </tbody>
@@ -66,6 +67,22 @@ function submitSupplierEdit(event, form) {
         });
     } else {
         cancelEdit(form.querySelector("button[type='button']"));
+    }
+}
+
+function confirmDelete(id, name) {
+    if (confirm(`Are you sure you want to delete ${name}?\nThis will remove all associated transactions.`)) {
+        fetch(`/suppliers/${id}`, {
+            method: "DELETE"
+        }).then(async response => {
+            const msg = await response.text();
+            if (response.ok) {
+                window.location.href = "/suppliers";
+            } else {
+                console.warn("DELETE failed with", response.status, msg);
+                location.reload();
+            }
+        });
     }
 }
 </script>

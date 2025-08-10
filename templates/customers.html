@@ -16,15 +16,17 @@
     {% if customers %}
         <table>
             <thead>
-                <tr><th>Customer Name</th></tr>
+                <tr>
+                    <th class="cog-col"></th>
+                    <th>Customer Name</th>
+                </tr>
             </thead>
             <tbody>
                 {% for customer in customers %}
-                    <tr>
+                    <tr class="clickable-row" data-href="/customers/{{ customer.id }}">
+                        <td class="cog-col"></td>
                         <td>
-                            <a href="{{ url_for('single_customer', customer_id=customer.id) }}">
-                                {{ customer.name }}
-                            </a>
+                            {{ customer.name }}
                         </td>
                     </tr>
                 {% endfor %}
@@ -35,6 +37,10 @@
     {% else %}
         <p>No results.</p>
     {% endif %}
+</div>
+
+<div id="floating-cog" style="display: none;">
+  <a id="floating-cog-link" href="">⚙️</a>
 </div>
 
 <div id="pagination-controls" style="margin-top: 1rem;"></div>
@@ -56,4 +62,6 @@ function openForm() {
     document.getElementById("new-customer-form").style.display = "block";
 }
 </script>
+
+<script src="{{ url_for('static', filename='edit-cog.js') }}"></script>
 {% endblock %}

@@ -105,6 +105,51 @@ def backup_deleted_entity(entity, repo_class) -> None:
     return
 
 
+def backup_deleted_transactions(transactions, repo_class) -> None:
+    """Populate a recovery database with an entity and its related transactions."""
+    try:
+        recovery_db_path = create_recovery_db()
+        recovery_repo = repo_class(db_path=recovery_db_path)
+        for transaction in transactions:
+            recovery_repo.create(transaction)
+
+        logger.info("[RECOVERY] Successfully backed up transaction(s).")
+    except Exception as err:
+        logger.error(f"[RECOVERY] Recovery failed due to error:\n{err}")
+        raise
+
+    return
+
+
+def delete_old_recovery_dbs(older_than_days: int = 30) -> None:
+    """Delete recovery database files older than a given number of days."""
+    recovery_dir = get_recovery_path()
+    if not recovery_dir.exists():
+        logger.warning("[CLEANUP] Recovery directory does not exist.")
+        return
+
+    cutoff = datetime.now().timestamp() - (older_than_days * 86400)
+    deleted_files = 0
+
+    for db_file in recovery_dir.glob("*.db"):
+        try:
+            # Check if filename matches the expected pattern: YYYYMMDD_HHMMSS.db
+            if db_file.stem.count("_") != 1:
+                continue
+            datetime.strptime(db_file.stem, "%Y%m%d_%H%M%S")  # Validate format
+
+            if db_file.stat().st_mtime < cutoff:
+                db_file.unlink()
+                deleted_files += 1
+                logger.info(
+                    f"[CLEANUP] Deleted old recovery DB: {db_file.name}"
+                )
+        except Exception as e:
+            logger.warning(f"[CLEANUP] Skipped {db_file.name}: {e}")
+
+    logger.info(f"[CLEANUP] Deleted {deleted_files} old recovery database(s).")
+
+
 def normalize_datetime(dt_str, output_format="%Y-%m-%d %H:%M:%S"):
     """Try to parse a datetime string using multiple possible formats.
 

@@ -63,20 +63,25 @@ class TestCustomerRepository(TestCase):
 
         self.repo = CustomerRepository(db_path=Path("/fake/db/path.db"))
 
-    def test_create_without_id(self):
-        self.mock_cursor.lastrowid = 42
-        result = self.repo.create(id=None, name="Alice")
-        self.mock_cursor.execute.assert_called_once_with(
-            "INSERT INTO customers (name) VALUES (?)", ("Alice",)
-        )
-        self.assertEqual(result, Customer(42, "Alice"))
+    def test_connect(self):
+        with patch("lib.db.customer.sqlite3.connect") as mock_connect:
+            self.repo._connect()
+        mock_connect.assert_called_once_with(self.repo.db_path)
 
-    def test_create_with_id(self):
-        result = self.repo.create(id=5, name="Bob")
+    def test_create(self):
+        customer = Customer(None, "CreateMe")
+        result = self.repo.create(customer)
+
+        if customer.id is None:
+            args = ["(name)", "(?)", (customer.name,)]
+            expected = Customer(self.mock_cursor.lastrowid, customer.name)
+        else:
+            args = ["(id, name)", "(?, ?)", (customer.id, customer.name)]
+            expected = customer
         self.mock_cursor.execute.assert_called_once_with(
-            "INSERT INTO customers (id, name) VALUES (?, ?)", (5, "Bob")
+            f"INSERT INTO customers {args[0]} VALUES {args[1]}", args[2]
         )
-        self.assertEqual(result, Customer(5, "Bob"))
+        assert result == expected
 
     def test_read_by_id(self):
         self.mock_cursor.fetchone.return_value = (1, "Alice")
@@ -99,28 +104,42 @@ class TestCustomerRepository(TestCase):
             self.repo.read()
 
     def test_update(self):
+        customer = Customer(2, "Updated")
         with patch.object(
-            self.repo, "read", return_value=Customer(1, "UpdatedName")
+            self.repo, "read", return_value=customer
         ) as mock_read:
-            result = self.repo.update(id=1, name="UpdatedName")
-            self.mock_cursor.execute.assert_called_once_with(
-                "UPDATE customers SET name = ? WHERE id = ?",
-                ("UpdatedName", 1),
-            )
-            self.assertEqual(result, Customer(1, "UpdatedName"))
-            mock_read.assert_called_once_with(id=1)
+            result = self.repo.update(customer)
+
+        exec_calls = self.mock_cursor.execute.call_args_list
+        assert exec_calls[0].args == (
+            "UPDATE customers SET name = ? WHERE id = ?",
+            (customer.name, customer.id),
+        )
+        assert exec_calls[1].args == (
+            "UPDATE sales SET customer_name = ? WHERE customer_id = ?",
+            (customer.name, customer.id),
+        )
+        self.assertEqual(result, customer)
+        mock_read.assert_called_once_with(id=customer.id)
 
     def test_delete_when_exists(self):
         customer = Customer(3, "DeleteMe")
         with patch.object(
             self.repo, "read", return_value=customer
         ) as mock_read:
-            result = self.repo.delete(3)
-            self.mock_cursor.execute.assert_called_once_with(
-                "DELETE FROM customers WHERE id = ?", (3,)
-            )
-            self.assertEqual(result, customer)
-            mock_read.assert_called_once_with(id=3)
+            result = self.repo.delete(customer.id)
+
+        exec_calls = self.mock_cursor.execute.call_args_list
+        assert exec_calls[0].args == (
+            "DELETE FROM customers WHERE id = ?",
+            (customer.id,),
+        )
+        assert exec_calls[1].args == (
+            "DELETE FROM sales WHERE customer_id = ?",
+            (customer.id,),
+        )
+        self.assertEqual(result, customer)
+        mock_read.assert_called_once_with(id=customer.id)
 
     def test_delete_when_not_exists(self):
         with patch.object(self.repo, "read", return_value=None):

@@ -1,0 +1,51 @@
+[
+    {
+        "supplier": {
+            "id": 1,
+            "name": "Supplier1"
+        },
+        "purchases": [
+            {
+                "id": 1,
+                "supplier_id": 1,
+                "supplier_name": "Supplier1",
+                "supplier_invoice_code": "SINV-001",
+                "internal_invoice_number": "IINV-001",
+                "net_amount": 123.45,
+                "vat_percent": "20%",
+                "goods": 100.0,
+                "utilities": 10.0,
+                "motor_expenses": 5.70,
+                "sundries": 4.75,
+                "miscellaneous": 3.0,
+                "payment_method": "Card",
+                "timestamp": "2024-01-01 10:00:00",
+                "capital_spend": 1
+            },
+            {
+                "id": 2,
+                "supplier_id": 1,
+                "supplier_name": "Supplier1",
+                "supplier_invoice_code": "SINV-002",
+                "internal_invoice_number": "IINV-002",
+                "net_amount": 456.78,
+                "vat_percent": "5%",
+                "goods": 400.0,
+                "utilities": 50.0,
+                "motor_expenses": 6.0,
+                "sundries": 0.70,
+                "miscellaneous": 0.08,
+                "payment_method": "BACS",
+                "timestamp": "2024-02-01 12:00:00",
+                "capital_spend": 0
+            }
+        ]
+    },
+    {
+        "supplier": {
+            "id": 2,
+            "name": "Supplier2"
+        },
+        "purchases": []
+    }
+]

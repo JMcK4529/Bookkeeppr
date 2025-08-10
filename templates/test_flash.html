@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2>Test Flash Messages</h2>
+  <form method="post" action="/test/flash/success" style="margin-bottom: 1rem;">
+    <button type="submit">Trigger Success Flash</button>
+  </form>
+  <form method="post" action="/test/flash/error">
+    <button type="submit">Trigger Error Flash</button>
+  </form>
+{% endblock %}

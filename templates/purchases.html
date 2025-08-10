@@ -4,8 +4,12 @@
 <h1>Purchases</h1>
 <form method="get" action="/purchases" class="filter-form">
     <div class="form-row">
+        <label for="internal_invoice">Internal Invoice Number:</label>
+        <input type="text" name="internal_invoice" id="internal_invoice" value="{{ filters.internal_invoice or '' }}">
+    </div>
+    <div class="form-row">
         <label for="invoice">Supplier Invoice Code:</label>
-        <input type="text" name="invoice" id="invoice" value="{{ filters.invoice or '' }}">
+        <input type="text" name="supplier_invoice" id="supplier_invoice" value="{{ filters.supplier_invoice or '' }}">
     </div>
     <div class="form-row">
         <label for="supplier">Supplier Name:</label>
@@ -75,7 +79,9 @@
     <table>
         <thead>
             <tr>
-                <th>Invoice Number</th>
+                <th class="cog-col"></th>
+                <th>Internal Invoice</th>
+                <th>Supplier Invoice</th>
                 <th>Supplier Name</th>
                 <th>Net (£)</th>
                 <th>VAT %</th>
@@ -91,7 +97,9 @@
         </thead>
         <tbody>
             {% for purchase in purchases %}
-                <tr>
+                <tr class="clickable-row" data-href="/purchases/{{ purchase.id }}">
+                    <td class="cog-col"></td>
+                    <td>{{ purchase.internal_invoice_number }}</td>
                     <td>{{ purchase.supplier_invoice_code }}</td>
                     <td>{{ purchase.supplier_name }}</td>
                     <td>{{ "%.2f"|format(purchase.net_amount) }}</td>
@@ -107,11 +115,15 @@
                 </tr>
             {% else %}
                 <tr>
-                    <td colspan="11">No purchases found.</td>
+                    <td colspan="14">No purchases found.</td>
                 </tr>
             {% endfor %}
         </tbody>
     </table>
+</div>
+
+<div id="floating-cog" style="display: none;">
+  <a id="floating-cog-link" href="">⚙️</a>
 </div>
 
 <div id="pagination-controls" style="margin-top: 1rem;"></div>
@@ -120,4 +132,6 @@
   window.PAGINATE_PER_PAGE = 10;
 </script>
 <script src="{{ url_for('static', filename='pagination.js') }}"></script>
+
+<script src="{{ url_for('static', filename='edit-cog.js') }}"></script>
 {% endblock %}
