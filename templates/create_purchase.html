@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Create Purchase</h2>
+<form method="post" action="/purchases/create">
+    <label for="supplier_name">Supplier:</label>
+    <select name="supplier_name" required>
+        {% for supplier in suppliers %}
+            <option value="{{ supplier.name }}">{{ supplier.name }}</option>
+        {% endfor %}
+    </select><br>
+
+    <label for="supplier_invoice_code">Supplier Invoice Code:</label>
+    <input type="text" name="supplier_invoice_code" required><br>
+
+    <label for="internal_invoice_number">Internal Invoice Number:</label>
+    <input type="text" name="internal_invoice_number" required><br>
+
+    <label for="net_amount">Net Amount:</label>
+    <input type="number" step="0.01" name="net_amount" required><br>
+
+    <label for="vat_percent">VAT Percent:</label>
+    <select name="vat_percent">
+        <option value="0.0">0%</option>
+        <option value="0.2">20%</option>
+    </select><br>
+
+    <label for="goods">Goods:</label>
+    <input type="number" step="0.01" name="goods" value="0.00"><br>
+
+    <label for="utilities">Utilities:</label>
+    <input type="number" step="0.01" name="utilities" value="0.00"><br>
+
+    <label for="motor_expenses">Motor Expenses:</label>
+    <input type="number" step="0.01" name="motor_expenses" value="0.00"><br>
+
+    <label for="sundries">Sundries:</label>
+    <input type="number" step="0.01" name="sundries" value="0.00"><br>
+
+    <label for="miscellaneous">Miscellaneous:</label>
+    <input type="number" step="0.01" name="miscellaneous" value="0.00"><br>
+
+    <label for="payment_method">Payment Method:</label>
+    <select name="payment_method">
+        <option value="BACS">BACS</option>
+        <option value="Cash">Cash</option>
+        <option value="Card">Card</option>
+        <option value="Direct Debit">Direct Debit</option>
+    </select><br>
+
+    <label>
+        Capital Spend: <input type="checkbox" name="capital_spend">
+    </label><br>
+
+    <label>
+        Override creation timestamp: <input type="checkbox" id="toggleTimestamp">
+    </label><br>
+
+    <div id="timestampSection" style="display:none;">
+        <label for="timestamp">Date & Time:</label>
+        <input type="datetime-local" name="timestamp"><br>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const toggle = document.getElementById("toggleTimestamp");
+            const section = document.getElementById("timestampSection");
+
+            toggle.addEventListener("change", function () {
+                section.style.display = this.checked ? "block" : "none";
+            });
+        });
+    </script>
+
+    <button type="submit">Create Purchase</button>
+</form>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const inputs = {
+        net_amount: document.querySelector('input[name="net_amount"]'),
+        goods: document.querySelector('input[name="goods"]'),
+        utilities: document.querySelector('input[name="utilities"]'),
+        motor_expenses: document.querySelector('input[name="motor_expenses"]'),
+        sundries: document.querySelector('input[name="sundries"]'),
+        miscellaneous: document.querySelector('input[name="miscellaneous"]')
+    };
+
+    let currentlyEditing = null;
+
+    function parse(val) {
+        return parseFloat(val) || 0;
+    }
+
+    // Track previous values for enhanced balancing logic
+    const previousValues = {
+        net_amount: parse(inputs.net_amount.value),
+        goods: parse(inputs.goods.value),
+        utilities: parse(inputs.utilities.value),
+        motor_expenses: parse(inputs.motor_expenses.value),
+        sundries: parse(inputs.sundries.value),
+        miscellaneous: parse(inputs.miscellaneous.value),
+    };
+
+    function updateFromChange() {
+        const net = parse(inputs.net_amount.value);
+        const misc = parse(inputs.miscellaneous.value);
+        const subtotal = parse(inputs.goods.value) + parse(inputs.utilities.value) +
+                         parse(inputs.motor_expenses.value) + parse(inputs.sundries.value);
+
+        if (currentlyEditing === "net") {
+            inputs.miscellaneous.value = (net - subtotal).toFixed(2);
+        } else if (currentlyEditing === "miscellaneous") {
+            inputs.net_amount.value = (subtotal + misc).toFixed(2);
+        } else {
+            // Subtotal field is being edited — user knows their breakdown
+            inputs.miscellaneous.value = "0.00";
+            inputs.net_amount.value = subtotal.toFixed(2);
+        }
+
+        currentlyEditing = null;
+    }
+
+    ["goods", "utilities", "motor_expenses", "sundries"].forEach(field => {
+        inputs[field]?.addEventListener("input", function () {
+            currentlyEditing = field;
+            updateFromChange();
+        });
+    });
+
+    // Add blur event listeners to format after editing ends
+    ["net_amount", "goods", "utilities", "motor_expenses", "sundries", "miscellaneous"].forEach(field => {
+        inputs[field]?.addEventListener("blur", function () {
+            const val = parse(this.value);
+            this.value = val.toFixed(2);
+        });
+    });
+
+    inputs.net_amount.addEventListener("input", function () {
+        currentlyEditing = "net";
+        updateFromChange();
+    });
+
+    inputs.miscellaneous.addEventListener("input", function () {
+        currentlyEditing = "miscellaneous";
+        updateFromChange();
+    });
+
+    // Init once on load
+    updateFromChange();
+});
+</script>
+
+{% endblock %}

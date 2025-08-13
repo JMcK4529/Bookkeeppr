@@ -1,0 +1,73 @@
+[
+    {
+        "supplier": "Test",
+        "supplier_invoice": "SUP-INV",
+        "internal_invoice": "INT-INV",
+        "net": { "eq": 456.78 },
+        "goods": { "min": 100.0, "max": 200.0 },
+        "utilities": { "eq": 50.0 },
+        "motor_expenses": { "max": 30.0 },
+        "sundries": { "min": 5.0 },
+        "miscellaneous": { "eq": 2.5 },
+        "vat": ["20%", "5%"],
+        "payment": ["Card", "Bank"],
+        "timeFrom": "2024-01-01 00:00:00",
+        "timeTo": "2024-02-01 00:00:00",
+        "capital_spend": "True"
+    },
+    {
+        "supplier": "Test"
+    },
+    {
+        "supplier_invoice": "SUP-INV"
+    },
+    {
+        "internal_invoice": "INT-INV"
+    },
+    {
+        "net": { "eq": 456.78 }
+    },
+    {
+        "net": { "min": 400.0 }
+    },
+    {
+        "net": { "max": 500.0 }
+    },
+    {
+        "net": { "min": 400.0, "max": 500.0 }
+    },
+    {
+        "goods": { "eq": 100.0 }
+    },
+    {
+        "utilities": { "min": 10.0 }
+    },
+    {
+        "motor_expenses": { "max": 25.0 }
+    },
+    {
+        "sundries": { "eq": 5.0 }
+    },
+    {
+        "miscellaneous": { "min": 1.0, "max": 5.0 }
+    },
+    {
+        "vat": ["20%"]
+    },
+    {
+        "payment": ["Bank"]
+    },
+    {
+        "timeFrom": "2024-01-01 00:00:00"
+    },
+    {
+        "timeTo": "2024-01-31 00:00:00"
+    },
+    {
+        "capital_spend": "True"
+    },
+    {
+        "capital_spend": "False"
+    },
+    {}
+]

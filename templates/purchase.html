@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Purchases - Bookkeeppr{% endblock %}
+
+{% block content %}
+<h1>Purchase Details</h1>
+
+<div id="details">
+    {% if purchase_obj %}
+    <div class="edit-form-container">
+        <form id="edit-purchase-form" onsubmit="submitPurchaseEdit(event)" data-purchase-id="{{ purchase_obj.id }}">
+            <div class="top-actions">
+                <button type="button" onclick="enableEdit()">⚙️ Edit</button>
+                <button type="submit" style="display: none;">💾 Save</button>
+                <button type="button" onclick="cancelEdit()" style="display: none;">❌ Cancel</button>
+                <button type="button" onclick="confirmDelete({{ purchase_obj.id }}, '{{ purchase_obj.supplier_invoice_code }}')">🗑️</button>
+            </div>
+
+            <div class="field-group">
+                <label>Supplier</label>
+                <select name="supplier_name" disabled>
+                    {% for supplier in suppliers %}
+                        <option value="{{ supplier.name }}" {% if supplier.name == purchase_obj.supplier_name %}selected{% endif %}>{{ supplier.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field-group">
+                <label>Internal Invoice Number</label>
+                <input type="text" name="internal_invoice_number" value="{{ purchase_obj.internal_invoice_number }}" disabled>
+            </div>
+
+            <div class="field-group">
+                <label>Supplier Invoice Code</label>
+                <input type="text" name="supplier_invoice_code" value="{{ purchase_obj.supplier_invoice_code }}" disabled>
+            </div>
+
+            {% for label, name, value in [
+                ('Net Amount', 'net_amount', '%.2f' % purchase_obj.net_amount),
+                ('VAT %', 'vat_percent', 100 * purchase_obj.vat_percent),
+                ('Goods', 'goods', purchase_obj.goods),
+                ('Utilities', 'utilities', purchase_obj.utilities),
+                ('Motor', 'motor_expenses', purchase_obj.motor_expenses),
+                ('Sundries', 'sundries', purchase_obj.sundries),
+                ('Miscellaneous', 'miscellaneous', purchase_obj.miscellaneous)
+            ] %}
+                <div class="field-group">
+                    <label>{{ label }}</label>
+                    <input type="number" step="0.01" name="{{ name }}" value="{{ value }}" disabled>
+                </div>
+            {% endfor %}
+
+            <div class="field-group">
+                <label>Payment</label>
+                <select name="payment_method" disabled>
+                    {% for method in ["BACS", "Cheque", "Contra", "Direct Debit"] %}
+                        <option value="{{ method }}" {% if method == purchase_obj.payment_method %}selected{% endif %}>{{ method }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field-group">
+                <label>Timestamp</label>
+                <input type="datetime-local" name="timestamp"
+                       value="{{ purchase_obj.timestamp[:16].replace(' ', 'T') if purchase_obj.timestamp else '' }}"
+                       disabled>
+            </div>
+
+            <div class="field-group">
+                <label>Capital Spend</label>
+                <select name="capital_spend" disabled>
+                    <option value="True" {% if purchase_obj.capital_spend %}selected{% endif %}>True</option>
+                    <option value="False" {% if not purchase_obj.capital_spend %}selected{% endif %}>False</option>
+                </select>
+            </div>
+        </form>
+    </div>
+    {% else %}
+        <p>The purchase could not be found.</p>
+    {% endif %}
+</div>
+
+<script>
+function enableEdit() {
+    const form = document.getElementById("edit-purchase-form");
+    form.querySelectorAll("input, select").forEach(el => el.disabled = false);
+    form.querySelector("button[type='submit']").style.display = "inline";
+    form.querySelector("button[onclick='cancelEdit()']").style.display = "inline";
+    form.querySelector("button[onclick='enableEdit()']").style.display = "none";
+}
+
+function cancelEdit() {
+    const form = document.getElementById("edit-purchase-form");
+    form.querySelectorAll("input, select").forEach(el => el.disabled = true);
+    form.reset();
+    form.querySelector("button[type='submit']").style.display = "none";
+    form.querySelector("button[onclick='cancelEdit()']").style.display = "none";
+    form.querySelector("button[onclick='enableEdit()']").style.display = "inline";
+}
+
+function submitPurchaseEdit(event) {
+    event.preventDefault();
+    const form = document.getElementById("edit-purchase-form");
+    const id = form.dataset.purchaseId;
+    const data = new FormData(form);
+
+    if (data.has("vat_percent")) {
+        const vat = parseFloat(data.get("vat_percent"));
+        data.set("vat_percent", (vat / 100).toFixed(4));
+    }
+
+    fetch(`/purchases/${id}`, {
+        method: "PATCH",
+        body: new URLSearchParams(data),
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+    }).then(async response => {
+        const msg = await response.text();
+        console.warn("PATCH result:", response.status, msg);
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert("Update failed: " + msg);
+        }
+    });
+}
+
+function confirmDelete(id, code) {
+    if (confirm(`Are you sure you want to delete purchase ${code}?`)) {
+        fetch(`/purchases/${id}`, {
+            method: "DELETE"
+        }).then(async response => {
+            const msg = await response.text();
+            if (response.ok) {
+                window.location.href = "/purchases";
+            } else {
+                console.warn("DELETE failed with", response.status, msg);
+                location.reload();
+            }
+        });
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    const inputs = {
+        net_amount: document.querySelector('input[name="net_amount"]'),
+        goods: document.querySelector('input[name="goods"]'),
+        utilities: document.querySelector('input[name="utilities"]'),
+        motor_expenses: document.querySelector('input[name="motor_expenses"]'),
+        sundries: document.querySelector('input[name="sundries"]'),
+        miscellaneous: document.querySelector('input[name="miscellaneous"]')
+    };
+
+    let currentlyEditing = null;
+
+    function parse(val) {
+        return parseFloat(val) || 0;
+    }
+
+    // Track previous values for enhanced balancing logic
+    const previousValues = {
+        net_amount: parse(inputs.net_amount.value),
+        goods: parse(inputs.goods.value),
+        utilities: parse(inputs.utilities.value),
+        motor_expenses: parse(inputs.motor_expenses.value),
+        sundries: parse(inputs.sundries.value),
+        miscellaneous: parse(inputs.miscellaneous.value),
+    };
+
+    ["net_amount", "goods", "utilities", "motor_expenses", "sundries", "miscellaneous"].forEach(field => {
+        const val = parse(inputs[field].value);
+        inputs[field].value = val.toFixed(2);
+    });
+
+    function updateFromChange() {
+        const net = parse(inputs.net_amount.value);
+        const misc = parse(inputs.miscellaneous.value);
+        const subtotal = parse(inputs.goods.value) + parse(inputs.utilities.value) +
+                         parse(inputs.motor_expenses.value) + parse(inputs.sundries.value);
+
+        if (currentlyEditing === "net") {
+            inputs.miscellaneous.value = (net - subtotal).toFixed(2);
+        } else if (currentlyEditing === "miscellaneous") {
+            inputs.net_amount.value = (subtotal + misc).toFixed(2);
+        } else {
+            // Subtotal field is being edited — user knows their breakdown
+            inputs.miscellaneous.value = "0.00";
+            inputs.net_amount.value = subtotal.toFixed(2);
+        }
+
+        currentlyEditing = null;
+    }
+
+    ["goods", "utilities", "motor_expenses", "sundries"].forEach(field => {
+        inputs[field]?.addEventListener("input", function () {
+            currentlyEditing = field;
+            updateFromChange();
+        });
+    });
+
+    // Add blur event listeners to format after editing ends
+    ["net_amount", "goods", "utilities", "motor_expenses", "sundries", "miscellaneous"].forEach(field => {
+        inputs[field]?.addEventListener("blur", function () {
+            const val = parse(this.value);
+            this.value = val.toFixed(2);
+        });
+    });
+
+    inputs.net_amount.addEventListener("input", function () {
+        currentlyEditing = "net";
+        updateFromChange();
+    });
+
+    inputs.miscellaneous.addEventListener("input", function () {
+        currentlyEditing = "miscellaneous";
+        updateFromChange();
+    });
+
+    // Init once on load
+    updateFromChange();
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("edit-purchase-form");
+    if (!form) return;
+
+    // Ensure all inputs are disabled on load
+    form.querySelectorAll("input, select").forEach(el => el.disabled = true);
+
+    // Hide Save/Cancel, show Edit
+    const editBtn = form.querySelector("button[onclick='enableEdit()']");
+    const saveBtn = form.querySelector("button[type='submit']");
+    const cancelBtn = form.querySelector("button[onclick='cancelEdit()']");
+
+    if (editBtn) editBtn.style.display = "inline";
+    if (saveBtn) saveBtn.style.display = "none";
+    if (cancelBtn) cancelBtn.style.display = "none";
+});
+</script>
+
+{% endblock %}

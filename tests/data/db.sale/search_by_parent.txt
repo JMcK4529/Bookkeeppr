@@ -1,0 +1,37 @@
+[
+    {
+        "customer": {
+            "id": 1,
+            "name": "Customer1"
+        },
+        "sales": [
+            {
+                "id": 1,
+                "customer_id": 1,
+                "customer_name": "Customer1",
+                "invoice_number": "INV-001",
+                "net_amount": 100.00,
+                "vat_percent": "20%",
+                "payment_method": "BACS",
+                "timestamp": "2024-01-01 01:00:00"
+            },
+            {
+                "id": 2,
+                "customer_id": 1,
+                "customer_name": "Customer1",
+                "invoice_number": "INV-002",
+                "net_amount": 200.00,
+                "vat_percent": "0%",
+                "payment_method": "Card",
+                "timestamp": "2024-02-02 02:00:00"
+            },
+        ]
+    },
+    {
+        "customer": {
+            "id": 2,
+            "name": "Customer2"
+        },
+        "sales": []
+    }
+]

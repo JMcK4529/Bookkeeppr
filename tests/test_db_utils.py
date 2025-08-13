@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, mock_open, call, patch
 from tests.data_utils import get_test_data
 from lib.db.utils import *
 
@@ -16,10 +16,10 @@ def test_get_db_path(params):
         local_app_data = params.get("local_app_data")
         app_data = params.get("app_data")
         base = local_app_data or app_data
-        expected = Path(base) / "Bookkeeppr" / "bookkeeppr.db"
+        expected = Path(base) / "Bookkeeppr" / ".bookkeeppr.db"
     else:
-        home = params.get("home")
-        expected = Path(home) / ".bookkeeppr.db"
+        base = params.get("home")
+        expected = Path(base) / ".Bookkeeppr" / ".bookkeeppr.db"
 
     with (
         patch("lib.db.utils.platform.system") as mock_system,
@@ -31,7 +31,7 @@ def test_get_db_path(params):
             mock_getenv.side_effect = [local_app_data, app_data]
             mock_path.return_value = Path(base)
         else:
-            mock_path.home.return_value = Path(home)
+            mock_path.home.return_value = Path(base)
         result = get_db_path()
 
     assert result == expected
@@ -98,8 +98,91 @@ def test_init_db(params, caplog):
     else:
         expected_msg = f"[DB] Initialized new database at {db_path}"
         assert expected_msg in caplog.text
-        mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        mkdir_calls = mock_mkdir.call_args_list
+        mkdir_args = call(parents=True, exist_ok=True)
+        assert mkdir_calls == [mkdir_args] * 2
         mock_connect.assert_called_once_with(db_path)
         mock_conn.executescript.assert_called_once_with(schema_content)
         mock_conn.commit.assert_called_once()
         mock_conn.close.assert_called_once()
+
+
+def test_create_recovery_db():
+    mock_recovery_dir = Path("/tmp/recovery")
+    mock_timestamp = "20240728_123456"
+    mock_schema_sql = "CREATE TABLE dummy (id INTEGER);"
+
+    with (
+        patch(
+            "lib.db.utils.get_recovery_path", return_value=mock_recovery_dir
+        ),
+        patch("lib.db.utils.datetime") as mock_datetime,
+        patch("lib.db.utils.sqlite3.connect") as mock_connect,
+        patch("lib.db.utils.open", mock_open(read_data=mock_schema_sql)),
+    ):
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        mock_datetime.now.return_value.strftime.return_value = mock_timestamp
+
+        result = create_recovery_db()
+
+    expected_path = mock_recovery_dir / f"{mock_timestamp}.db"
+    assert result == expected_path
+    mock_connect.assert_called_once_with(expected_path)
+    mock_conn.executescript.assert_called_once_with(mock_schema_sql)
+
+
+def test_backup_deleted_entity(caplog):
+    from lib.db.utils import backup_deleted_entity
+
+    mock_entity = MagicMock()
+    mock_transaction = MagicMock()
+    mock_recovery_path = Path("/tmp/recovery/test.db")
+
+    mock_repo_instance = MagicMock()
+    mock_txn_repo = MagicMock()
+    mock_repo_class = MagicMock(return_value=mock_repo_instance)
+
+    mock_repo_instance.get_transactions.return_value = [mock_transaction]
+    mock_repo_instance.transaction_repository.return_value = mock_txn_repo
+
+    with (
+        patch(
+            "lib.db.utils.create_recovery_db", return_value=mock_recovery_path
+        ),
+        caplog.at_level(logging.INFO),
+    ):
+        backup_deleted_entity(mock_entity, mock_repo_class)
+
+    mock_repo_class.assert_called_once_with(db_path=mock_recovery_path)
+    mock_repo_instance.create.assert_called_once_with(mock_entity)
+    mock_repo_instance.get_transactions.assert_called_once_with(mock_entity)
+    mock_repo_instance.transaction_repository.assert_called_once_with(
+        db_path=mock_recovery_path
+    )
+    mock_txn_repo.create.assert_called_once_with(mock_transaction)
+
+    assert (
+        "[RECOVERY] Successfully backed up entity and transactions."
+        in caplog.text
+    )
+
+
+@pytest.mark.parametrize(
+    ("input_str", "expected"),
+    [
+        ("2024-07-01T14:30", "2024-07-01 14:30:00"),
+        ("2024-07-01 14:30", "2024-07-01 14:30:00"),
+        ("2024-07-01T14:30:59", "2024-07-01 14:30:59"),
+        ("2024-07-01 14:30:59", "2024-07-01 14:30:59"),
+        ("2024-07-01", "2024-07-01 00:00:00"),
+        ("invalid-date", None),
+        (None, None),
+        ("", None),
+    ],
+)
+def test_normalize_datetime(input_str, expected):
+    from lib.db.utils import normalize_datetime
+
+    result = normalize_datetime(input_str)
+    assert result == expected

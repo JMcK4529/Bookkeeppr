@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Sales</h1>
+<form method="get" action="/sales" class="filter-form">
+    <div class="form-row">
+        <label for="invoice">Invoice Number:</label>
+        <input type="text" name="invoice" id="invoice" value="{{ filters.invoice or '' }}">
+    </div>
+    <div class="form-row">
+        <label for="customer">Customer Name:</label>
+        <input type="text" name="customer" id="customer" value="{{ filters.customer or '' }}">
+    </div>
+    <div class="form-row">
+        <label>Net Amount:</label>
+        <input type="number" step="0.01" name="net_min" placeholder="Min" value="{{ '%.2f'|format(filters.net.get('min')) if filters.net.get('min') is not none else '' }}">
+        <input type="number" step="0.01" name="net_max" placeholder="Max" value="{{ filters.net.max or '' }}">
+        <input type="number" step="0.01" name="net_eq" placeholder="Equal to" value="{{ filters.net.eq or '' }}">
+    </div>
+    <div class="form-row">
+        <label>VAT Percent:</label>
+        {% for vat in vat_options %}
+            <label><input type="checkbox" name="vat" value="{{ vat }}" {% if vat in filters.vat %}checked{% endif %}> {{ 100*vat }}%</label>
+        {% endfor %}
+    </div>
+    <div class="form-row">
+        <label>Payment Method:</label>
+        {% for method in payment_options %}
+            <label><input type="checkbox" name="payment" value="{{ method }}" {% if method in filters.payment %}checked{% endif %}> {{ method }}</label>
+        {% endfor %}
+    </div>
+    <div class="form-row">
+        <label>Date/Time From:</label>
+        <input type="datetime-local" name="timeFrom" value="{{ filters.timeFrom or '' }}">
+        <label>To:</label>
+        <input type="datetime-local" name="timeTo" value="{{ filters.timeTo or '' }}">
+    </div>
+    <div class="form-row">
+        <button type="submit">Apply Filters</button>
+        <a href="/sales/create" class="create-button">+</a>
+    </div>
+</form>
+
+<div id="results">
+    <table>
+        <thead>
+            <tr>
+                <th class="cog-col"></th>
+                <th>Invoice Number</th>
+                <th>Customer Name</th>
+                <th>Net Amount (£)</th>
+                <th>VAT %</th>
+                <th>Payment Method</th>
+                <th>Timestamp</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sale in sales %}
+                <tr class="clickable-row" data-href="/sales/{{ sale.id }}">
+                    <td class="cog-col"></td>
+                    <td>{{ sale.invoice_number }}</td>
+                    <td>{{ sale.customer_name }}</td>
+                    <td>{{ "%.2f"|format(sale.net_amount) }}</td>
+                    <td>{{ 100*sale.vat_percent }}</td>
+                    <td>{{ sale.payment_method }}</td>
+                    <td>{{ sale.timestamp }}</td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="7">No sales found.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div id="floating-cog" style="display: none;">
+  <a id="floating-cog-link" href="">⚙️</a>
+</div>
+
+<div id="pagination-controls" style="margin-top: 1rem;"></div>
+
+<script>
+  window.PAGINATE_PER_PAGE = 3;
+</script>
+<script src="{{ url_for('static', filename='pagination.js') }}"></script>
+
+<script src="{{ url_for('static', filename='edit-cog.js') }}"></script>
+{% endblock %}

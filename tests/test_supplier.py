@@ -63,20 +63,25 @@ class TestSupplierRepository(TestCase):
 
         self.repo = SupplierRepository(db_path=Path("/fake/db/path.db"))
 
-    def test_create_without_id(self):
-        self.mock_cursor.lastrowid = 42
-        result = self.repo.create(id=None, name="Alice")
-        self.mock_cursor.execute.assert_called_once_with(
-            "INSERT INTO suppliers (name) VALUES (?)", ("Alice",)
-        )
-        self.assertEqual(result, Supplier(42, "Alice"))
+    def test_connect(self):
+        with patch("lib.db.supplier.sqlite3.connect") as mock_connect:
+            self.repo._connect()
+        mock_connect.assert_called_once_with(self.repo.db_path)
 
-    def test_create_with_id(self):
-        result = self.repo.create(id=5, name="Bob")
+    def test_create(self):
+        supplier = Supplier(None, "CreateMe")
+        result = self.repo.create(supplier)
+
+        if supplier.id is None:
+            args = ["(name)", "(?)", (supplier.name,)]
+            expected = Supplier(self.mock_cursor.lastrowid, supplier.name)
+        else:
+            args = ["(id, name)", "(?, ?)", (supplier.id, supplier.name)]
+            expected = supplier
         self.mock_cursor.execute.assert_called_once_with(
-            "INSERT INTO suppliers (id, name) VALUES (?, ?)", (5, "Bob")
+            f"INSERT INTO suppliers {args[0]} VALUES {args[1]}", args[2]
         )
-        self.assertEqual(result, Supplier(5, "Bob"))
+        assert result == expected
 
     def test_read_by_id(self):
         self.mock_cursor.fetchone.return_value = (1, "Alice")
@@ -99,31 +104,96 @@ class TestSupplierRepository(TestCase):
             self.repo.read()
 
     def test_update(self):
+        supplier = Supplier(2, "Updated")
         with patch.object(
-            self.repo, "read", return_value=Supplier(1, "UpdatedName")
+            self.repo, "read", return_value=supplier
         ) as mock_read:
-            result = self.repo.update(id=1, name="UpdatedName")
-            self.mock_cursor.execute.assert_called_once_with(
-                "UPDATE suppliers SET name = ? WHERE id = ?",
-                ("UpdatedName", 1),
-            )
-            self.assertEqual(result, Supplier(1, "UpdatedName"))
-            mock_read.assert_called_once_with(id=1)
+            result = self.repo.update(supplier)
+
+        exec_calls = self.mock_cursor.execute.call_args_list
+        assert exec_calls[0].args == (
+            "UPDATE suppliers SET name = ? WHERE id = ?",
+            (supplier.name, supplier.id),
+        )
+        assert exec_calls[1].args == (
+            "UPDATE purchases SET supplier_name = ? WHERE supplier_id = ?",
+            (supplier.name, supplier.id),
+        )
+        self.assertEqual(result, supplier)
+        mock_read.assert_called_once_with(id=supplier.id)
 
     def test_delete_when_exists(self):
         supplier = Supplier(3, "DeleteMe")
         with patch.object(
             self.repo, "read", return_value=supplier
         ) as mock_read:
-            result = self.repo.delete(3)
-            self.mock_cursor.execute.assert_called_once_with(
-                "DELETE FROM suppliers WHERE id = ?", (3,)
-            )
-            self.assertEqual(result, supplier)
-            mock_read.assert_called_once_with(id=3)
+            result = self.repo.delete(supplier.id)
+
+        exec_calls = self.mock_cursor.execute.call_args_list
+        assert exec_calls[0].args == (
+            "DELETE FROM suppliers WHERE id = ?",
+            (supplier.id,),
+        )
+        assert exec_calls[1].args == (
+            "DELETE FROM purchases WHERE supplier_id = ?",
+            (supplier.id,),
+        )
+        self.assertEqual(result, supplier)
+        mock_read.assert_called_once_with(id=supplier.id)
 
     def test_delete_when_not_exists(self):
         with patch.object(self.repo, "read", return_value=None):
             result = self.repo.delete(999)
             self.assertIsNone(result)
             self.mock_cursor.execute.assert_not_called()
+
+    def test_search_when_exists(self):
+        self.mock_cursor.fetchall.return_value = [
+            (1, "OneTwoThree"),
+            (2, "onetwothree"),
+            (3, "twothreefour"),
+        ]
+        result = self.repo.search(name_query="two")
+        self.mock_cursor.execute.assert_called_once_with(
+            "SELECT id, name FROM suppliers WHERE LOWER(name) LIKE ?",
+            ("%two%",),
+        )
+        self.assertEqual(
+            result,
+            [
+                Supplier(1, "OneTwoThree"),
+                Supplier(2, "onetwothree"),
+                Supplier(3, "twothreefour"),
+            ],
+        )
+
+    def test_search_when_not_exists(self):
+        self.mock_cursor.fetchall.return_value = []
+        result = self.repo.search(name_query="one")
+        self.mock_cursor.execute.assert_called_once_with(
+            "SELECT id, name FROM suppliers WHERE LOWER(name) LIKE ?",
+            ("%one%",),
+        )
+        self.assertEqual(
+            result,
+            [],
+        )
+
+    def test_all(self):
+        self.mock_cursor.fetchall.return_value = [
+            (1, "OneTwoThree"),
+            (2, "onetwothree"),
+            (3, "twothreefour"),
+        ]
+        result = self.repo.all()
+        self.mock_cursor.execute.assert_called_once_with(
+            "SELECT id, name FROM suppliers"
+        )
+        self.assertEqual(
+            result,
+            [
+                Supplier(1, "OneTwoThree"),
+                Supplier(2, "onetwothree"),
+                Supplier(3, "twothreefour"),
+            ],
+        )

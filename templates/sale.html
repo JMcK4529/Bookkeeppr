@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Sales - Bookkeeppr{% endblock %}
+
+{% block content %}
+<h1>Sale Details</h1>
+
+<div id="details">
+    {% if sale_obj %}
+    <div class="edit-form-container">
+        <form id="edit-sale-form" onsubmit="submitSaleEdit(event)" data-sale-id="{{ sale_obj.id }}">
+            <div class="top-actions">
+                <button type="button" onclick="enableEdit()">⚙️ Edit</button>
+                <button type="submit" style="display: none;">💾 Save</button>
+                <button type="button" onclick="cancelEdit()" style="display: none;">❌ Cancel</button>
+                <button type="button" onclick="confirmDelete({{ sale_obj.id }}, '{{ sale_obj.invoice_number }}')">🗑️</button>
+            </div>
+
+            <div class="field-group">
+                <label>Invoice Number</label>
+                <input type="text" name="invoice_number" value="{{ sale_obj.invoice_number }}" disabled>
+            </div>
+
+            <div class="field-group">
+                <label>Customer</label>
+                <select name="customer_name" disabled>
+                    {% for customer in customers %}
+                        <option value="{{ customer.name }}" {% if customer.name == sale_obj.customer_name %}selected{% endif %}>{{ customer.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field-group">
+                <label>Net Amount</label>
+                <input type="number" name="net_amount" step="0.01" value="{{ '%.2f' % sale_obj.net_amount }}" disabled>
+            </div>
+
+            <div class="field-group">
+                <label>VAT %</label>
+                <input type="number" name="vat_percent" step="0.01" value="{{ 100 * sale_obj.vat_percent }}" disabled>
+            </div>
+
+            <div class="field-group">
+                <label>Payment Method</label>
+                <select name="payment_method" disabled>
+                    {% for method in ["BACS", "Cheque", "Contra", "Direct Debit"] %}
+                        <option value="{{ method }}" {% if method == sale_obj.payment_method %}selected{% endif %}>{{ method }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field-group">
+                <label>Timestamp</label>
+                <input type="datetime-local" name="timestamp"
+                       value="{{ sale_obj.timestamp[:16].replace(' ', 'T') if sale_obj.timestamp else '' }}"
+                       disabled>
+            </div>
+        </form>
+    </div>
+    {% else %}
+        <p>The sale could not be found.</p>
+    {% endif %}
+</div>
+
+<script>
+function enableEdit() {
+    const form = document.getElementById("edit-sale-form");
+    form.querySelectorAll("input, select").forEach(el => el.disabled = false);
+    form.querySelector("button[type='submit']").style.display = "inline";
+    form.querySelector("button[onclick='cancelEdit()']").style.display = "inline";
+    form.querySelector("button[onclick='enableEdit()']").style.display = "none";
+}
+
+function cancelEdit() {
+    const form = document.getElementById("edit-sale-form");
+    form.querySelectorAll("input, select").forEach(el => el.disabled = true);
+
+    // Reset form values to initial defaults
+    form.reset();
+
+    form.querySelector("button[type='submit']").style.display = "none";
+    form.querySelector("button[onclick='cancelEdit()']").style.display = "none";
+    form.querySelector("button[onclick='enableEdit()']").style.display = "inline";
+}
+
+function submitSaleEdit(event) {
+    event.preventDefault();
+    const form = document.getElementById("edit-sale-form");
+    const id = form.dataset.saleId;
+    const data = new FormData(form);
+
+    // Convert VAT % to decimal
+    if (data.has("vat_percent")) {
+        const vat = parseFloat(data.get("vat_percent"));
+        data.set("vat_percent", (vat / 100).toFixed(4));
+    }
+
+    fetch(`/sales/${id}`, {
+        method: "PATCH",
+        body: new URLSearchParams(data),
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+    }).then(async response => {
+        const msg = await response.text();
+        console.warn("PATCH result:", response.status, msg);
+
+        form.querySelectorAll("input, select").forEach(el => el.disabled = true);
+        form.querySelector("button[type='submit']").style.display = "none";
+        form.querySelector("button[onclick='cancelEdit()']").style.display = "none";
+        form.querySelector("button[onclick='enableEdit()']").style.display = "inline";
+        location.reload();
+    });
+}
+
+function confirmDelete(id, invoice) {
+    if (confirm(`Are you sure you want to delete sale ${invoice}?`)) {
+        fetch(`/sales/${id}`, {
+            method: "DELETE"
+        }).then(async response => {
+            const msg = await response.text();
+            if (response.ok) {
+                window.location.href = "/sales";
+            } else {
+                console.warn("DELETE failed with", response.status, msg);
+                location.reload();
+            }
+        });
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("edit-sale-form");
+    if (!form) return;
+
+    // Ensure all inputs are disabled on load
+    form.querySelectorAll("input, select").forEach(el => el.disabled = true);
+
+    // Hide Save/Cancel, show Edit
+    const editBtn = form.querySelector("button[onclick='enableEdit()']");
+    const saveBtn = form.querySelector("button[type='submit']");
+    const cancelBtn = form.querySelector("button[onclick='cancelEdit()']");
+
+    if (editBtn) editBtn.style.display = "inline";
+    if (saveBtn) saveBtn.style.display = "none";
+    if (cancelBtn) cancelBtn.style.display = "none";
+});
+</script>
+{% endblock %}

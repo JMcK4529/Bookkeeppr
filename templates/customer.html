@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Customers - Bookkeeppr{% endblock %}
+
+{% block content %}
+<h1>Customer Details</h1>
+
+<div id="details">
+    <!-- Customer details and icon-link(s) to change -->
+    {% if customer_obj %}
+        <table>
+            <thead>
+                <tr><th colspan="2">Customer Name</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <span class="customer-name">{{ customer_obj.name }}</span>
+                        <form class="edit-form" style="display: none;" data-customer-id="{{ customer_obj.id }}" onsubmit="submitCustomerEdit(event, this)">
+                            <input type="text" class="name-input" name="name" value="{{ customer_obj.name }}" required>
+                            <button type="submit">💾Submit</button>
+                            <button type="button" onclick="cancelEdit(this)">❌Cancel</button>
+                        </form>
+                        <button type="button" onclick="enableEdit(this)">⚙️</button>
+                        <button type="button" onclick="confirmDelete({{ customer_obj.id }}, '{{ customer_obj.name }}')">🗑️</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    {% else %}
+        <p>The customer could not be found.</p>
+    {% endif %}
+</div>
+
+<script>
+function enableEdit(button) {
+    const row = button.closest("tr");
+    row.querySelector(".customer-name").style.display = "none";
+    row.querySelector(".edit-form").style.display = "inline";
+    row.querySelector(".name-input").focus();
+}
+
+function cancelEdit(button) {
+    const row = button.closest("tr");
+    row.querySelector(".edit-form").style.display = "none";
+    row.querySelector(".customer-name").style.display = "inline";
+}
+
+function submitCustomerEdit(event, form) {
+    event.preventDefault();
+    const row = form.closest("tr");
+    const newName = row.querySelector(".name-input").value;
+    const currentName = row.querySelector(".customer-name").textContent;
+    const id = form.dataset.customerId;
+
+    if (newName && newName !== currentName) {
+        fetch(`/customers/${id}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({ name: newName }),
+        }).then(async response => {
+            const msg = await response.text();
+            console.warn("PATCH result:", response.status, msg);
+            location.reload();
+        });
+    } else {
+        cancelEdit(form.querySelector("button[type='button']"));
+    }
+}
+
+function confirmDelete(id, name) {
+    if (confirm(`Are you sure you want to delete ${name}?\nThis will remove all associated transactions.`)) {
+        fetch(`/customers/${id}`, {
+            method: "DELETE"
+        }).then(async response => {
+            const msg = await response.text();
+            if (response.ok) {
+                window.location.href = "/customers";
+            } else {
+                console.warn("DELETE failed with", response.status, msg);
+                location.reload();
+            }
+        });
+    }
+}
+</script>
+
+{% endblock %}
