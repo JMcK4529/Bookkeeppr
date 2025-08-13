@@ -142,7 +142,6 @@ function confirmDelete(id, code) {
     }
 }
 
-
 document.addEventListener("DOMContentLoaded", function () {
     const inputs = {
         net_amount: document.querySelector('input[name="net_amount"]'),
@@ -159,46 +158,68 @@ document.addEventListener("DOMContentLoaded", function () {
         return parseFloat(val) || 0;
     }
 
-    function updateMiscFromNet() {
-        if (currentlyEditing === "miscellaneous") return;
+    // Track previous values for enhanced balancing logic
+    const previousValues = {
+        net_amount: parse(inputs.net_amount.value),
+        goods: parse(inputs.goods.value),
+        utilities: parse(inputs.utilities.value),
+        motor_expenses: parse(inputs.motor_expenses.value),
+        sundries: parse(inputs.sundries.value),
+        miscellaneous: parse(inputs.miscellaneous.value),
+    };
 
-        currentlyEditing = "net";
+    ["net_amount", "goods", "utilities", "motor_expenses", "sundries", "miscellaneous"].forEach(field => {
+        const val = parse(inputs[field].value);
+        inputs[field].value = val.toFixed(2);
+    });
+
+    function updateFromChange() {
         const net = parse(inputs.net_amount.value);
+        const misc = parse(inputs.miscellaneous.value);
         const subtotal = parse(inputs.goods.value) + parse(inputs.utilities.value) +
                          parse(inputs.motor_expenses.value) + parse(inputs.sundries.value);
 
-        if (subtotal > net) {
-            inputs.net_amount.value = subtotal.toFixed(2);
-            inputs.miscellaneous.value = "0.00";
+        if (currentlyEditing === "net") {
+            inputs.miscellaneous.value = (net - subtotal).toFixed(2);
+        } else if (currentlyEditing === "miscellaneous") {
+            inputs.net_amount.value = (subtotal + misc).toFixed(2);
         } else {
-            const misc = net - subtotal;
-            inputs.miscellaneous.value = misc.toFixed(2);
+            // Subtotal field is being edited — user knows their breakdown
+            inputs.miscellaneous.value = "0.00";
+            inputs.net_amount.value = subtotal.toFixed(2);
         }
+
         currentlyEditing = null;
     }
 
-    function updateNetFromMisc() {
-        if (currentlyEditing === "net") return;
-
-        currentlyEditing = "miscellaneous";
-        const total = parse(inputs.goods.value) + parse(inputs.utilities.value) +
-                      parse(inputs.motor_expenses.value) + parse(inputs.sundries.value) +
-                      parse(inputs.miscellaneous.value);
-        inputs.net_amount.value = total.toFixed(2);
-        currentlyEditing = null;
-    }
-
-    // Hook listeners
-    ["goods", "utilities", "motor_expenses", "sundries", "net_amount"].forEach(field => {
-        inputs[field]?.addEventListener("input", updateMiscFromNet);
+    ["goods", "utilities", "motor_expenses", "sundries"].forEach(field => {
+        inputs[field]?.addEventListener("input", function () {
+            currentlyEditing = field;
+            updateFromChange();
+        });
     });
 
-    inputs.miscellaneous.addEventListener("input", updateNetFromMisc);
+    // Add blur event listeners to format after editing ends
+    ["net_amount", "goods", "utilities", "motor_expenses", "sundries", "miscellaneous"].forEach(field => {
+        inputs[field]?.addEventListener("blur", function () {
+            const val = parse(this.value);
+            this.value = val.toFixed(2);
+        });
+    });
+
+    inputs.net_amount.addEventListener("input", function () {
+        currentlyEditing = "net";
+        updateFromChange();
+    });
+
+    inputs.miscellaneous.addEventListener("input", function () {
+        currentlyEditing = "miscellaneous";
+        updateFromChange();
+    });
 
     // Init once on load
-    updateMiscFromNet();
+    updateFromChange();
 });
-
 
 document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("edit-purchase-form");
@@ -217,4 +238,5 @@ document.addEventListener("DOMContentLoaded", () => {
     if (cancelBtn) cancelBtn.style.display = "none";
 });
 </script>
+
 {% endblock %}

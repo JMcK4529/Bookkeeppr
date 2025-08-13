@@ -9,8 +9,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def get_app_folder_path() -> Path:
-    """Return the full path to the Bookkeeppr app folder, platform-aware."""
+def get_app_data_folder_path() -> Path:
+    """Return the full path to the Bookkeeppr app data folder, platform-aware."""
     system = platform.system()
     if system == "Windows":
         base = os.getenv("LOCALAPPDATA") or os.getenv("APPDATA")
@@ -21,12 +21,12 @@ def get_app_folder_path() -> Path:
 
 def get_db_path() -> Path:
     """Return the full path to the Bookkeeppr database, platform-aware."""
-    return get_app_folder_path() / ".bookkeeppr.db"
+    return get_app_data_folder_path() / ".bookkeeppr.db"
 
 
 def get_recovery_path() -> Path:
     """Return the full path to the database recovery folder, platform-aware."""
-    return get_app_folder_path() / "recovery"
+    return get_app_data_folder_path() / "recovery"
 
 
 def database_exists() -> bool:

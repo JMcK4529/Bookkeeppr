@@ -19,5 +19,10 @@ def seed() -> None:
     run_sql_script("lib/db/sql/seed.sql")
 
 
+def big_seed() -> None:
+    run_sql_script("lib/db/sql/big_seed_purchases.sql")
+    run_sql_script("lib/db/sql/big_seed_sales.sql")
+
+
 def cleanup() -> None:
     run_sql_script("lib/db/sql/cleanup.sql")

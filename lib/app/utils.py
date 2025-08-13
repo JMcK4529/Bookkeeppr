@@ -288,9 +288,15 @@ def extract_transaction_to_create(
 
 
 def create_single_transaction_view(
-    transaction_name, model_class, repo_class, entity_class_name, entities
+    transaction_name,
+    model_class,
+    repo_class,
+    entity_class_name,
+    entity_repo_class,
 ):
     def view(**kwargs):
+        entity_repo = entity_repo_class()
+        entities = entity_repo.all()
         transaction_id = kwargs[f"{transaction_name[:-1]}_id"]
         repo = repo_class()
         match request.method:
@@ -442,8 +448,6 @@ def register_transaction_routes(
     by_id_endpoint_name = f"single_{transaction_name[:-1]}"
 
     repo = repo_class()
-    entity_repo = entity_repo_class()
-    entities = entity_repo.all()
 
     @app.route(list_endpoint, endpoint=list_endpoint_name, methods=["GET"])
     def list_transactions():
@@ -470,6 +474,8 @@ def register_transaction_routes(
         create_endpoint, endpoint=create_endpoint_name, methods=["GET", "POST"]
     )
     def create_transaction():
+        entity_repo = entity_repo_class()
+        entities = entity_repo.all()
         render = render_template(
             f"create_{transaction_name[:-1]}.html",
             **{f"{entity_class_name.lower()}s": entities},
@@ -503,7 +509,7 @@ def register_transaction_routes(
             model_class,
             repo_class,
             entity_class_name,
-            entities,
+            entity_repo_class,
         ),
         methods=["GET", "PATCH", "DELETE"],
     )
@@ -598,7 +604,7 @@ def export_to_xlsx(
                     t.invoice_number,
                     t.net_amount,
                     t.vat_percent,
-                    f"=C{i}*D{i}/100",
+                    f"=C{i}*D{i}",
                     f"=C{i}+E{i}",
                     t.payment_method,
                     ts.strftime("%d/%m/%Y"),
@@ -646,7 +652,7 @@ def export_to_xlsx(
                     t.sundries,
                     t.miscellaneous,
                     t.vat_percent,
-                    f"=C{i}*I{i}/100",
+                    f"=C{i}*I{i}",
                     f"=C{i}+J{i}",
                     t.supplier_invoice_code,
                     t.payment_method,
