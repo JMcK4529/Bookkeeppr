@@ -6,7 +6,6 @@ from lib.db.entity import Entity, EntityRepository
 from lib.db.sale import Sale, SaleRepository
 from lib.db.utils import get_db_path
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

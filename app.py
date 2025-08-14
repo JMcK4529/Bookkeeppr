@@ -28,7 +28,17 @@ from lib.app.utils import (
 )
 from lib.db import utils, customer, purchase, sale, supplier
 
-logging.basicConfig(level=logging.INFO)
+log_path = utils.get_app_data_folder_path() / "bookkeeppr.log"
+filehandler = logging.FileHandler(log_path, encoding="utf-8")
+filehandler.setFormatter(
+    logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+)
+filehandler.setLevel(logging.INFO)
+
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+root_logger.addHandler(filehandler)
+
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)

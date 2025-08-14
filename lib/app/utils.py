@@ -22,7 +22,6 @@ from lib.db import utils as dbutils
 from lib.db.purchase import Purchase, PurchaseRepository
 from lib.db.sale import Sale, SaleRepository
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
