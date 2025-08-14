@@ -3,17 +3,17 @@ AppName=Bookkeeppr
 AppVersion=alpha-0.0.0
 DefaultDirName={pf}\Bookkeeppr
 DefaultGroupName=Bookkeeppr
-OutputDir=dist
+OutputDir=..\dist
 OutputBaseFilename=BookkeepprInstaller
 Compression=lzma
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64
 DisableProgramGroupPage=yes
-SetupIconFile=assets\bookkeeppr.ico
+SetupIconFile=..\assets\bookkeeppr.ico
 WizardStyle=modern
 
 [Files]
-Source: "dist\Bookkeeppr.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\dist\Bookkeeppr.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Bookkeeppr"; Filename: "{app}\Bookkeeppr.exe"

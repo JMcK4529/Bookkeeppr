@@ -26,5 +26,9 @@ jobs:
           git tag ${{ github.event.inputs.tag_name }}
           git push origin ${{ github.event.inputs.tag_name }}
 
-      - name: Trigger build-windows-installer workflow
-        run: echo "Tag ${{ github.event.inputs.tag_name }} pushed. Build will begin on tag trigger."
+      - name: Trigger Windows installer workflow manually
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: build-windows-installer.yml
+          token: ${{ secrets.GH_PAT_TRIGGER }}
+          inputs: '{ "version": "${{ github.event.inputs.tag_name }}" }'
