@@ -12,6 +12,7 @@ from flask import (
     redirect,
     render_template,
     send_file,
+    send_from_directory,
     url_for,
     request,
 )
@@ -42,6 +43,15 @@ scheduler.init_app(app)
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(
+        os.path.join(app.root_path, "assets"),
+        "bookkeeppr.ico",
+        mimetype="image/vnd.microsoft.icon",
+    )
 
 
 register_entity_routes(
@@ -117,32 +127,18 @@ def export():
     return render_template("export.html")
 
 
-# Temporary test route for flash messages
-@app.route("/test/flash")
-def test_flash():
-    return render_template("test_flash.html")
-
-
-@app.route("/test/flash/success", methods=["POST"])
-def trigger_success():
-    length = secrets.randbelow(200) + 4
-    flash(f"Success: {secrets.token_hex(length)}", "success")
-    return redirect("/test/flash")
-
-
-@app.route("/test/flash/error", methods=["POST"])
-def trigger_error():
-    length = secrets.randbelow(200) + 4
-    flash(f"Error: {secrets.token_hex(length)}", "error")
-    return redirect("/test/flash")
-
-
 def run_flask(debug=False):
     app.run(port=1304, debug=debug)
 
 
 def main():
     debug_mode = len(sys.argv) > 1 and sys.argv[1] == "debug"
+
+    try:
+        utils.init_db()
+    except Exception as e:
+        logger.error(f"[DB] Failed to initialize or verify database: {e}")
+        sys.exit(1)
 
     try:
         logger.info("[CLEANUP] Running startup housekeeping...")
