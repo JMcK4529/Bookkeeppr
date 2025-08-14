@@ -1,11 +1,12 @@
 import logging
 import os
 import platform
+import sys
+import time
 from datetime import datetime
 from pathlib import Path
 import sqlite3
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -39,6 +40,31 @@ def database_exists() -> bool:
     return exists
 
 
+def get_schema_path(retries=3, delay=0.3) -> Path:
+    """
+    Returns the path of the schema.sql, whether in frozen mode or not
+    """
+    for i in range(retries):
+        if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+            base_path = Path(sys._MEIPASS) / "lib" / "db" / "sql"
+        else:
+            base_path = Path(__file__).parent
+
+        schema_path = base_path / "schema.sql"
+
+        if schema_path.exists():
+            return schema_path
+
+        logger.warning(
+            f"[DB] schema.sql not found, retrying ({i+1}/{retries})..."
+        )
+        time.sleep(delay)
+
+    raise FileNotFoundError(
+        f"[DB] schema.sql still not found after {retries} attempts"
+    )
+
+
 def init_db() -> None:
     db_path = get_db_path()
     if db_path.exists():
@@ -53,7 +79,7 @@ def init_db() -> None:
 
     # Connect and initialize schema
     conn = sqlite3.connect(db_path)
-    schema_path = Path(__file__).parent / "schema.sql"
+    schema_path = get_schema_path()
 
     with open(schema_path, "r", encoding="utf-8") as f:
         schema_sql = f.read()
@@ -74,7 +100,7 @@ def create_recovery_db() -> Path:
     recovery_path = recovery_dir / f"{timestamp}.db"
 
     # Create empty DB
-    schema_path = Path(__file__).parent / "schema.sql"
+    schema_path = get_schema_path()
     conn = sqlite3.connect(recovery_path)
     with open(schema_path, "r", encoding="utf-8") as f:
         schema_sql = f.read()

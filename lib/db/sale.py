@@ -6,7 +6,6 @@ from typing import List, Optional
 from lib.db.transaction import Transaction, TransactionRepository
 from lib.db.utils import get_db_path, normalize_datetime
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

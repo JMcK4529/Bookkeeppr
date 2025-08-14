@@ -34,7 +34,15 @@ jobs:
 
       - name: Build EXE with PyInstaller
         run: |
-          pyinstaller app.py --name Bookkeeppr --windowed --onefile --icon=assets/bookkeeppr.ico
+          pyinstaller app.py `
+            --name Bookkeeppr `
+            --windowed `
+            --onefile `
+            --icon=assets/bookkeeppr.ico `
+            --add-data "lib;lib" `
+            --add-data "static;static" `
+            --add-data "templates;templates" `
+            --add-data "assets;assets"
 
       - name: Download and install Inno Setup
         run: |
