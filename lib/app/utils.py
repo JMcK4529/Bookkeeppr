@@ -731,15 +731,24 @@ def open_export_file_picker(transaction_name: str) -> Path:
     default_filename = f"{transaction_name.capitalize()} Record.xlsx"
 
     window = webview.windows[0]
-    file_path = window.create_file_dialog(
+    selected = window.create_file_dialog(
         dialog_type=FileDialog.SAVE,
         file_types=("Excel files (*.xlsx)",),
         save_filename=default_filename,
     )
 
-    if file_path:
-        raw_path = str(file_path)
-        path = Path(raw_path)
+    if selected:
+        if isinstance(selected, (list, tuple)):
+            file_path = selected[0]
+        else:
+            file_path = selected
+
+        if isinstance(file_path, str):
+            path = Path(file_path)
+        elif isinstance(file_path, Path):
+            path = file_path
+        else:
+            path = Path(str(file_path))
         logger.info(f"[EXPORT] Final save path: {path}")
         return path
 
