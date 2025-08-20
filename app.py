@@ -51,6 +51,14 @@ scheduler = APScheduler()
 scheduler.init_app(app)
 
 
+@app.context_processor
+def inject_paginate_per_page():
+    """
+    Always make current year available to app HTML-Jinja templates
+    """
+    return {"paginate_per_page": 10}
+
+
 @app.route("/")
 def index():
     return render_template("index.html")

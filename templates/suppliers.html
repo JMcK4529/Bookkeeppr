@@ -5,11 +5,30 @@
 {% block content %}
 <h1>Suppliers</h1>
 
-<form method="get" action="{{ url_for('suppliers') }}">
-    <input type="text" name="q" placeholder="Search suppliers..." value="{{ query }}">
-    <button type="submit">Search</button>
-    <button type="button" class="create-button" onclick="openForm()">+</button>
-</form>
+<!-- Hidden form modals -->
+<div id="create-modal">
+    <form method="post" action="/suppliers/create" class="modal-content">
+        <button class="close-button" onclick="closeCreateModal()">×</button>
+        <input type="text" name="name" placeholder="Supplier Name" required>
+        <button type="submit">Add Supplier</button>
+    </form>
+</div>
+
+<div id="filter-modal">
+    <form method="get" action="{{ url_for('suppliers') }}" class="modal-content">
+        <button class="close-button" onclick="closeFilterModal()">×</button>
+        <input type="text" name="q" placeholder="Search suppliers..." value="{{ query }}">
+        <button type="submit">Search</button>
+    </form>
+</div>
+<!-- End hidden modals -->
+
+<div class="actions-container">
+    <div class="top-actions">
+        <button type="button" onclick="openFilterModal()">Search</button>
+        <button type="button" class="create-button" onclick="openCreateModal()">Create +</button>
+    </div>
+</div>
 
 <div id="results">
     <!-- Placeholder: Paginated supplier list goes here -->
@@ -45,23 +64,42 @@
 
 <div id="pagination-controls" style="margin-top: 1rem;"></div>
 
-<!-- Hidden form modal or inline for new supplier -->
-<div id="new-supplier-form" style="display:none; margin-top: 1rem;">
-    <form method="post" action="/suppliers/create">
-        <input type="text" name="name" placeholder="Supplier Name" required>
-        <button type="submit">Add Supplier</button>
-    </form>
-</div>
+<script>
+  window.PAGINATE_PER_PAGE = parseInt("{{ paginate_per_page }}");
+</script>
+
+<script src="{{ url_for('static', filename='pagination.js') }}"></script>
 
 <script>
-  window.PAGINATE_PER_PAGE = 10;
-</script>
-<script src="{{ url_for('static', filename='pagination.js') }}"></script>
-<script>
-function openForm() {
-    document.getElementById("new-supplier-form").style.display = "block";
-}
+    function openCreateModal() {
+        document.getElementById("create-modal").style.display = "flex";
+    }
+    function closeCreateModal() {
+        document.getElementById("create-modal").style.display = "none";
+    }
+    window.onclick = function(event) {
+        const modal = document.getElementById("create-modal");
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
 </script>
 
 <script src="{{ url_for('static', filename='edit-cog.js') }}"></script>
+
+<script>
+    function openFilterModal() {
+        document.getElementById("filter-modal").style.display = "flex";
+    }
+
+    function closeFilterModal() {
+        document.getElementById("filter-modal").style.display = "none";
+    }
+    window.onclick = function(event) {
+        const modal = document.getElementById("filter-modal");
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+</script>
 {% endblock %}

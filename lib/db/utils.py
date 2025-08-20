@@ -48,7 +48,7 @@ def get_schema_path(retries=3, delay=0.3) -> Path:
         if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
             base_path = Path(sys._MEIPASS) / "lib" / "db" / "sql"
         else:
-            base_path = Path(__file__).parent
+            base_path = Path(__file__).parent / "sql"
 
         schema_path = base_path / "schema.sql"
 
@@ -56,7 +56,7 @@ def get_schema_path(retries=3, delay=0.3) -> Path:
             return schema_path
 
         logger.warning(
-            f"[DB] schema.sql not found, retrying ({i+1}/{retries})..."
+            f"[DB] schema.sql not found at {schema_path}, retrying ({i+1}/{retries})..."
         )
         time.sleep(delay)
 

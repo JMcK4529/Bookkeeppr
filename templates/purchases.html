@@ -2,78 +2,88 @@
 
 {% block content %}
 <h1>Purchases</h1>
-<form method="get" action="/purchases" class="filter-form">
-    <div class="form-row">
-        <label for="internal_invoice">Internal Invoice Number:</label>
-        <input type="text" name="internal_invoice" id="internal_invoice" value="{{ filters.internal_invoice or '' }}">
+
+<div id="filter-modal">
+    <form method="get" action="/purchases" class="modal-content">
+        <button class="close-button" onclick="closeFilterModal()">×</button>
+        <div class="form-row">
+            <label for="internal_invoice">Internal Invoice Number:</label>
+            <input type="text" name="internal_invoice" id="internal_invoice" value="{{ filters.internal_invoice or '' }}">
+        </div>
+        <div class="form-row">
+            <label for="invoice">Supplier Invoice Code:</label>
+            <input type="text" name="supplier_invoice" id="supplier_invoice" value="{{ filters.supplier_invoice or '' }}">
+        </div>
+        <div class="form-row">
+            <label for="supplier">Supplier Name:</label>
+            <input type="text" name="supplier" id="supplier" value="{{ filters.supplier or '' }}">
+        </div>
+        <div class="form-row">
+            <label>Net Amount:</label>
+            <input type="number" step="0.01" name="net_min" placeholder="Min" value="{{ filters.net.min or '' }}">
+            <input type="number" step="0.01" name="net_max" placeholder="Max" value="{{ filters.net.max or '' }}">
+            <input type="number" step="0.01" name="net_eq" placeholder="Equal to" value="{{ filters.net.eq or '' }}">
+        </div>
+        <div class="form-row">
+            <label>Goods:</label>
+            <input type="number" step="0.01" name="goods_min" placeholder="Min" value="{{ filters.goods.min or '' }}">
+            <input type="number" step="0.01" name="goods_max" placeholder="Max" value="{{ filters.goods.max or '' }}">
+            <input type="number" step="0.01" name="goods_eq" placeholder="Equal to" value="{{ filters.goods.eq or '' }}">
+        </div>
+        <div class="form-row">
+            <label>Utilities:</label>
+            <input type="number" step="0.01" name="utilities_min" placeholder="Min" value="{{ filters.utilities.min or '' }}">
+            <input type="number" step="0.01" name="utilities_max" placeholder="Max" value="{{ filters.utilities.max or '' }}">
+            <input type="number" step="0.01" name="utilities_eq" placeholder="Equal to" value="{{ filters.utilities.eq or '' }}">
+        </div>
+        <div class="form-row">
+            <label>Motor Expenses:</label>
+            <input type="number" step="0.01" name="motor_expenses_min" placeholder="Min" value="{{ filters.motor_expenses.min or '' }}">
+            <input type="number" step="0.01" name="motor_expenses_max" placeholder="Max" value="{{ filters.motor_expenses.max or '' }}">
+            <input type="number" step="0.01" name="motor_expenses_eq" placeholder="Equal to" value="{{ filters.motor_expenses.eq or '' }}">
+        </div>
+        <div class="form-row">
+            <label>Sundries:</label>
+            <input type="number" step="0.01" name="sundries_min" placeholder="Min" value="{{ filters.sundries.min or '' }}">
+            <input type="number" step="0.01" name="sundries_max" placeholder="Max" value="{{ filters.sundries.max or '' }}">
+            <input type="number" step="0.01" name="sundries_eq" placeholder="Equal to" value="{{ filters.sundries.eq or '' }}">
+        </div>
+        <div class="form-row">
+            <label>Miscellaneous:</label>
+            <input type="number" step="0.01" name="miscellaneous_min" placeholder="Min" value="{{ filters.miscellaneous.min or '' }}">
+            <input type="number" step="0.01" name="miscellaneous_max" placeholder="Max" value="{{ filters.miscellaneous.max or '' }}">
+            <input type="number" step="0.01" name="miscellaneous_eq" placeholder="Equal to" value="{{ filters.miscellaneous.eq or '' }}">
+        </div>
+        <div class="form-row">
+            <label>VAT Percent:</label>
+            {% for vat in vat_options %}
+                <label><input type="checkbox" name="vat" value="{{ vat }}" {% if vat in filters.vat %}checked{% endif %}> {{ 100*vat }}%</label>
+            {% endfor %}
+        </div>
+        <div class="form-row">
+            <label>Payment Method:</label>
+            {% for method in payment_options %}
+                <label><input type="checkbox" name="payment" value="{{ method }}" {% if method in filters.payment %}checked{% endif %}> {{ method }}</label>
+            {% endfor %}
+        </div>
+        <div class="form-row">
+            <label>Date/Time From:</label>
+            <input type="datetime-local" name="timeFrom" value="{{ filters.timeFrom or '' }}">
+            <label>To:</label>
+            <input type="datetime-local" name="timeTo" value="{{ filters.timeTo or '' }}">
+        </div>
+        <div class="form-row">
+            <button type="submit">Apply Filters</button>
+        </div>
+    </form>
+</div>
+
+<div class="actions-container">
+    <div class="top-actions">
+        <button type="button" onclick="openFilterModal()">Filters</button>
+        <button class="create-button"><a href="/purchases/create" class="create-button">Create +</a></button>
     </div>
-    <div class="form-row">
-        <label for="invoice">Supplier Invoice Code:</label>
-        <input type="text" name="supplier_invoice" id="supplier_invoice" value="{{ filters.supplier_invoice or '' }}">
-    </div>
-    <div class="form-row">
-        <label for="supplier">Supplier Name:</label>
-        <input type="text" name="supplier" id="supplier" value="{{ filters.supplier or '' }}">
-    </div>
-    <div class="form-row">
-        <label>Net Amount:</label>
-        <input type="number" step="0.01" name="net_min" placeholder="Min" value="{{ filters.net.min or '' }}">
-        <input type="number" step="0.01" name="net_max" placeholder="Max" value="{{ filters.net.max or '' }}">
-        <input type="number" step="0.01" name="net_eq" placeholder="Equal to" value="{{ filters.net.eq or '' }}">
-    </div>
-    <div class="form-row">
-        <label>Goods:</label>
-        <input type="number" step="0.01" name="goods_min" placeholder="Min" value="{{ filters.goods.min or '' }}">
-        <input type="number" step="0.01" name="goods_max" placeholder="Max" value="{{ filters.goods.max or '' }}">
-        <input type="number" step="0.01" name="goods_eq" placeholder="Equal to" value="{{ filters.goods.eq or '' }}">
-    </div>
-    <div class="form-row">
-        <label>Utilities:</label>
-        <input type="number" step="0.01" name="utilities_min" placeholder="Min" value="{{ filters.utilities.min or '' }}">
-        <input type="number" step="0.01" name="utilities_max" placeholder="Max" value="{{ filters.utilities.max or '' }}">
-        <input type="number" step="0.01" name="utilities_eq" placeholder="Equal to" value="{{ filters.utilities.eq or '' }}">
-    </div>
-    <div class="form-row">
-        <label>Motor Expenses:</label>
-        <input type="number" step="0.01" name="motor_expenses_min" placeholder="Min" value="{{ filters.motor_expenses.min or '' }}">
-        <input type="number" step="0.01" name="motor_expenses_max" placeholder="Max" value="{{ filters.motor_expenses.max or '' }}">
-        <input type="number" step="0.01" name="motor_expenses_eq" placeholder="Equal to" value="{{ filters.motor_expenses.eq or '' }}">
-    </div>
-    <div class="form-row">
-        <label>Sundries:</label>
-        <input type="number" step="0.01" name="sundries_min" placeholder="Min" value="{{ filters.sundries.min or '' }}">
-        <input type="number" step="0.01" name="sundries_max" placeholder="Max" value="{{ filters.sundries.max or '' }}">
-        <input type="number" step="0.01" name="sundries_eq" placeholder="Equal to" value="{{ filters.sundries.eq or '' }}">
-    </div>
-    <div class="form-row">
-        <label>Miscellaneous:</label>
-        <input type="number" step="0.01" name="miscellaneous_min" placeholder="Min" value="{{ filters.miscellaneous.min or '' }}">
-        <input type="number" step="0.01" name="miscellaneous_max" placeholder="Max" value="{{ filters.miscellaneous.max or '' }}">
-        <input type="number" step="0.01" name="miscellaneous_eq" placeholder="Equal to" value="{{ filters.miscellaneous.eq or '' }}">
-    </div>
-    <div class="form-row">
-        <label>VAT Percent:</label>
-        {% for vat in vat_options %}
-            <label><input type="checkbox" name="vat" value="{{ vat }}" {% if vat in filters.vat %}checked{% endif %}> {{ 100*vat }}%</label>
-        {% endfor %}
-    </div>
-    <div class="form-row">
-        <label>Payment Method:</label>
-        {% for method in payment_options %}
-            <label><input type="checkbox" name="payment" value="{{ method }}" {% if method in filters.payment %}checked{% endif %}> {{ method }}</label>
-        {% endfor %}
-    </div>
-    <div class="form-row">
-        <label>Date/Time From:</label>
-        <input type="datetime-local" name="timeFrom" value="{{ filters.timeFrom or '' }}">
-        <label>To:</label>
-        <input type="datetime-local" name="timeTo" value="{{ filters.timeTo or '' }}">
-    </div>
-    <div class="form-row">
-        <button type="submit">Apply Filters</button>
-        <a href="/purchases/create" class="create-button">+</a>
-    </div>
-</form>
+</div>
 
 <div id="results">
     <table>
@@ -129,9 +139,25 @@
 <div id="pagination-controls" style="margin-top: 1rem;"></div>
 
 <script>
-  window.PAGINATE_PER_PAGE = 10;
+  window.PAGINATE_PER_PAGE = parseInt("{{ paginate_per_page }}");
 </script>
 <script src="{{ url_for('static', filename='pagination.js') }}"></script>
 
 <script src="{{ url_for('static', filename='edit-cog.js') }}"></script>
+
+<script>
+    function openFilterModal() {
+        document.getElementById("filter-modal").style.display = "flex";
+    }
+
+    function closeFilterModal() {
+        document.getElementById("filter-modal").style.display = "none";
+    }
+    window.onclick = function(event) {
+        const modal = document.getElementById("filter-modal");
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+</script>
 {% endblock %}
